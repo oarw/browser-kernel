@@ -131,6 +131,38 @@ class CheckpointTests(unittest.TestCase):
             checkpoint.validate_links([{**base, 'path': 'windows/link', 'target': 'windows'},
                                        {**base, 'path': 'windows/link/child', 'target': 'windows'}])
 
+    @unittest.skipUnless(shutil.which('7z'), '7z not installed')
+    def test_completed_build_requires_matching_binary_and_survives_zip_roundtrip(self):
+        tree = (self.root / 'tree').resolve()
+        output = tree / 'windows/build/src/out/Default'
+        output.mkdir(parents=True)
+        obj = output / 'sample.obj'
+        obj.write_bytes(b'object')
+        timestamp = 1767225600 * 10**9 + 123456700
+        os.utime(obj, ns=(timestamp, timestamp))
+        (output / '.ninja_log').write_text('# ninja log v5\n0\t1\t1\tsample.obj\tabc\n')
+        executable = output / 'chrome.exe'
+        executable.write_bytes(b'fixture executable')
+        inputs = {'fixture': True}
+        state = {'status': 'built', 'inputs': inputs, 'browserCompiled': True}
+        write_json(tree / 'prepared.json', {'inputs': inputs})
+        write_json(tree / 'build-state.json', state)
+        write_json(tree / 'build-result.json', {**state, 'executableSha256': '0' * 64})
+        artifact = self.root / 'artifact'
+        with self.assertRaisesRegex(RuntimeError, 'does not match'):
+            checkpoint.create(tree, artifact)
+        self.assertFalse(artifact.exists())
+        write_json(tree / 'build-result.json', {**state, 'executableSha256': digest(executable)})
+        with patch('checkpoint.shutil.disk_usage', return_value=SimpleNamespace(free=1024**4)):
+            checksum = checkpoint.create(tree, artifact)
+            backup = tree.with_name('original-tree')
+            self.assertEqual(backup.parent, self.root.resolve())
+            tree.rename(backup)
+            result = checkpoint.restore(tree, artifact, checksum)
+        self.assertTrue(result['browserCompiled'])
+        self.assertFalse(result['browserAcceptancePassed'])
+        self.assertEqual(executable.read_bytes(), b'fixture executable')
+
     def test_experimental_flags_disable_pgo_and_lto_without_duplicate_assignments(self):
         value = experimental_flags('chrome_pgo_phase=2\nis_official_build=true\nis_component_build=false\nuse_thin_lto=true\n')
         self.assertIn('chrome_pgo_phase=0\n', value)
