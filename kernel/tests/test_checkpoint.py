@@ -90,7 +90,8 @@ class CheckpointTests(unittest.TestCase):
         output.mkdir(parents=True)
         obj = output / 'sample.obj'
         obj.write_bytes(b'completed object')
-        os.utime(obj, (1767225600, 1767225600))
+        timestamp = 1767225600 * 10**9 + 123456700
+        os.utime(obj, ns=(timestamp, timestamp))
         (output / '.ninja_log').write_text('# ninja log v5\n0\t1\t1\tsample.obj\tabc\n')
         write_json(tree / 'prepared.json', {'inputs': {'fixture': True}})
         state = {'status': 'checkpoint-ready', 'inputs': {'fixture': True}}
@@ -105,7 +106,7 @@ class CheckpointTests(unittest.TestCase):
             result = checkpoint.restore(tree, artifact, checksum)
         self.assertEqual(result['completedOutputs'], 1)
         self.assertEqual(obj.read_bytes(), b'completed object')
-        self.assertEqual(obj.stat().st_mtime_ns, 1767225600 * 10**9)
+        self.assertEqual(obj.stat().st_mtime_ns, timestamp)
 
     def test_experimental_flags_disable_pgo_and_lto_without_duplicate_assignments(self):
         value = experimental_flags('chrome_pgo_phase=2\nis_official_build=true\nis_component_build=false\nuse_thin_lto=true\n')
