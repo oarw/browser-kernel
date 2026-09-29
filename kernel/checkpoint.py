@@ -172,8 +172,15 @@ def create(root, output):
         raise RuntimeError('Builder still owns the workspace')
     state = json.loads((root / 'build-state.json').read_text(encoding='utf8'))
     prepared = json.loads((root / 'prepared.json').read_text(encoding='utf8'))
-    if state.get('status') != 'checkpoint-ready' or state.get('inputs') != prepared.get('inputs'):
+    if state.get('status') not in ('checkpoint-ready', 'built') or state.get('inputs') != prepared.get('inputs'):
         raise RuntimeError('Workspace is not ready for checkpointing')
+    if state['status'] == 'built':
+        result = json.loads((root / 'build-result.json').read_text(encoding='utf8'))
+        executable = root / 'windows/build/src/out/Default/chrome.exe'
+        if (state.get('browserCompiled') is not True or result.get('status') != 'built'
+                or result.get('browserCompiled') is not True or result.get('inputs') != prepared['inputs']
+                or not executable.is_file() or digest(executable) != result.get('executableSha256')):
+            raise RuntimeError('Completed build evidence does not match the executable')
     objects = completed_outputs(root)
     links = collect_links(root)
     link_sources = validate_links(links)
@@ -203,7 +210,9 @@ def create(root, output):
     expanded, count = inspect_archive(archive, link_sources)
     manifest = {'schemaVersion': 1, 'createdAt': now(), 'context': context(), 'workspace': str(root),
                 'archiveSha256': digest(archive), 'archiveBytes': archive.stat().st_size,
-                'expandedBytes': expanded, 'entries': count, 'inputs': prepared['inputs'], 'links': links, **objects}
+                'expandedBytes': expanded, 'entries': count, 'inputs': prepared['inputs'], 'links': links,
+                'buildStatus': state['status'], 'browserCompiled': state['status'] == 'built',
+                'browserAcceptancePassed': False, **objects}
     write_json(output / 'manifest.json', manifest)
     return digest(output / 'manifest.json')
 
