@@ -33,8 +33,10 @@ jobs:
       - run: python kernel/preflight.py --work-dir D:\fb-kernel --phase prepare --output release/preflight.json
       - run: python kernel/download_source.py --work-dir D:\fb-kernel
         timeout-minutes: 15
-      - shell: pwsh
+      - run: python -u kernel/build_windows.py --work-dir D:\fb-kernel --jobs 2 --prepare-only
         timeout-minutes: 150
+      - shell: pwsh
+        timeout-minutes: 20
         run: |
           python -u kernel/build_windows.py --work-dir D:\fb-kernel --jobs 2 --build-timeout-minutes 10 --checkpoint-on-timeout
           if ($LASTEXITCODE -ne 124) { throw "Expected a checkpoint slice; exit code: $LASTEXITCODE" }

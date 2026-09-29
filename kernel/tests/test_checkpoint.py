@@ -92,6 +92,8 @@ class CheckpointTests(unittest.TestCase):
         obj.write_bytes(b'completed object')
         timestamp = 1767225600 * 10**9 + 123456700
         os.utime(obj, ns=(timestamp, timestamp))
+        (output / 'alias.obj').symlink_to('sample.obj')
+        (output / 'cca').symlink_to('.', target_is_directory=True)
         (output / '.ninja_log').write_text('# ninja log v5\n0\t1\t1\tsample.obj\tabc\n')
         write_json(tree / 'prepared.json', {'inputs': {'fixture': True}})
         state = {'status': 'checkpoint-ready', 'inputs': {'fixture': True}}
@@ -107,6 +109,27 @@ class CheckpointTests(unittest.TestCase):
         self.assertEqual(result['completedOutputs'], 1)
         self.assertEqual(obj.read_bytes(), b'completed object')
         self.assertEqual(obj.stat().st_mtime_ns, timestamp)
+        self.assertTrue((output / 'alias.obj').is_symlink())
+        self.assertTrue((output / 'cca').is_symlink())
+        self.assertEqual((output / 'cca/sample.obj').read_bytes(), b'completed object')
+        self.assertEqual(len(result['links']), 2)
+        for link in result['links']:
+            self.assertEqual((tree / link['path']).lstat().st_mtime_ns, link['mtimeNs'])
+
+    def test_external_links_and_nested_link_destinations_are_rejected(self):
+        tree = (self.root / 'tree').resolve()
+        (tree / 'windows').mkdir(parents=True)
+        outside = self.root / 'outside.txt'
+        outside.write_text('outside')
+        (tree / 'windows/escape').symlink_to(outside)
+        with self.assertRaisesRegex(RuntimeError, 'escapes source tree'):
+            checkpoint.collect_links(tree)
+        base = {'directory': True, 'mtimeNs': 1}
+        with self.assertRaisesRegex(RuntimeError, 'Invalid'):
+            checkpoint.validate_links([{**base, 'path': 'windows/link', 'target': '../outside'}])
+        with self.assertRaisesRegex(RuntimeError, 'Nested'):
+            checkpoint.validate_links([{**base, 'path': 'windows/link', 'target': 'windows'},
+                                       {**base, 'path': 'windows/link/child', 'target': 'windows'}])
 
     def test_experimental_flags_disable_pgo_and_lto_without_duplicate_assignments(self):
         value = experimental_flags('chrome_pgo_phase=2\nis_official_build=true\nis_component_build=false\nuse_thin_lto=true\n')

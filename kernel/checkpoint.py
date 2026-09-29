@@ -15,6 +15,90 @@ MAX_TREE = 120 * GIB
 MEMBERS = {'windows', 'prepared.json', 'build-state.json', 'build-result.json'}
 
 
+def safe_relative(value):
+    path = PurePosixPath(value)
+    if (not path.parts or path.is_absolute() or '..' in path.parts or '\\' in value
+            or any(c in value for c in ':<>"|?*\r\n')
+            or any(part.endswith((' ', '.')) for part in path.parts)):
+        raise RuntimeError(f'Invalid relative path: {value}')
+    return path
+
+
+def collect_links(root):
+    base = root / 'windows'
+    if base.is_symlink() or base.is_junction():
+        raise RuntimeError('Windows source root must not be a link')
+    links = []
+    for directory, dirs, files in os.walk(base, followlinks=False):
+        dirs[:] = [name for name in dirs if name not in ('download_cache', '__pycache__')]
+        for name in list(dirs) + files:
+            path = Path(directory) / name
+            if not path.is_symlink() and not path.is_junction():
+                continue
+            target = path.resolve()
+            if not target.is_relative_to(base):
+                raise RuntimeError(f'Link target escapes source tree: {path}')
+            info = path.lstat()
+            links.append({'path': path.relative_to(root).as_posix(), 'target': target.relative_to(root).as_posix(),
+                          'directory': name in dirs or bool(getattr(info, 'st_file_attributes', 0) & 0x10),
+                          'mtimeNs': info.st_mtime_ns})
+            if name in dirs:
+                dirs.remove(name)
+    return links
+
+
+def validate_links(links):
+    if not isinstance(links, list) or len(links) > 10000:
+        raise RuntimeError('Invalid link manifest')
+    sources = set()
+    for link in links:
+        path, target = safe_relative(link['path']), safe_relative(link['target'])
+        if (path.parts[0] != 'windows' or len(path.parts) < 2 or target.parts[0] != 'windows'
+                or not isinstance(link['directory'], bool) or not isinstance(link['mtimeNs'], int)
+                or link['path'].casefold() in sources):
+            raise RuntimeError('Invalid internal link')
+        sources.add(link['path'].casefold())
+    for link in links:
+        if any(parent.as_posix().casefold() in sources for parent in PurePosixPath(link['path']).parents):
+            raise RuntimeError('Nested link destinations are not allowed')
+    return sources
+
+
+def set_link_mtime(path, timestamp):
+    if os.name != 'nt':
+        os.utime(path, ns=(timestamp, timestamp), follow_symlinks=False)
+        return
+    import ctypes
+    from ctypes import wintypes
+    kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p,
+                                   wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    kernel32.CreateFileW.restype = wintypes.HANDLE
+    kernel32.SetFileTime.argtypes = [wintypes.HANDLE, ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(wintypes.FILETIME)]
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    handle = kernel32.CreateFileW(str(path), 0x100, 7, None, 3, 0x02200000, None)
+    if handle == wintypes.HANDLE(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        ticks = timestamp // 100 + 116444736000000000
+        modified = wintypes.FILETIME(ticks & 0xffffffff, ticks >> 32)
+        if not kernel32.SetFileTime(handle, None, None, ctypes.byref(modified)):
+            raise ctypes.WinError(ctypes.get_last_error())
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def restore_links(root, links):
+    validate_links(links)
+    for link in links:
+        path, target = root / link['path'], root / link['target']
+        if (os.path.lexists(path) or not path.parent.resolve().is_relative_to(root / 'windows')
+                or not target.resolve().is_relative_to(root / 'windows')):
+            raise RuntimeError('Invalid link restoration destination')
+        os.symlink(os.path.relpath(target, path.parent), path, target_is_directory=link['directory'])
+        set_link_mtime(path, link['mtimeNs'])
+
+
 def context():
     return {key: os.environ.get(key, 'local') for key in
             ('GITHUB_REPOSITORY', 'GITHUB_SHA', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT')}
@@ -55,7 +139,7 @@ def verify_samples(root, samples):
             raise RuntimeError(f'Object sample changed: {relative}')
 
 
-def inspect_archive(archive):
+def inspect_archive(archive, link_sources=()):
     size = 0
     count = 0
     seen = set()
@@ -69,6 +153,8 @@ def inspect_archive(archive):
                     or path.parts[0] not in MEMBERS or key in seen
                     or stat.S_ISLNK(info.external_attr >> 16) or info.external_attr & 0x400):
                 raise RuntimeError(f'Invalid checkpoint entry: {info.filename}')
+            if any(key == link or key.startswith(link + '/') for link in link_sources):
+                raise RuntimeError('Link destination must not be embedded in archive')
             seen.add(key)
             size += info.file_size
             count += 1
@@ -89,12 +175,8 @@ def create(root, output):
     if state.get('status') != 'checkpoint-ready' or state.get('inputs') != prepared.get('inputs'):
         raise RuntimeError('Workspace is not ready for checkpointing')
     objects = completed_outputs(root)
-    for directory, dirs, files in os.walk(root / 'windows'):
-        dirs[:] = [name for name in dirs if name not in ('download_cache', '__pycache__')]
-        for name in dirs + files:
-            path = Path(directory) / name
-            if path.is_symlink() or path.is_junction():
-                raise RuntimeError(f'Checkpoint contains a link: {path}')
+    links = collect_links(root)
+    link_sources = validate_links(links)
     output.mkdir(parents=True, exist_ok=False)
     if shutil.disk_usage(output).free < MAX_ARCHIVE + 5 * GIB:
         raise RuntimeError('Insufficient checkpoint staging space')
@@ -102,6 +184,10 @@ def create(root, output):
     command = ['7z', 'a', '-tzip', '-mx=1', '-mmt=2', '-mtc=on', '-bsp0', str(archive),
                'windows', 'prepared.json', 'build-state.json', 'build-result.json',
                '-xr!download_cache', '-xr!__pycache__']
+    if links:
+        excluded = output / 'excluded-links.txt'
+        excluded.write_text(''.join(link['path'] + '\n' for link in links), encoding='utf8', newline='\n')
+        command.extend(['-scsUTF-8', '-x@' + str(excluded)])
     with subprocess.Popen(command, cwd=root) as process:
         deadline = time.monotonic() + 45 * 60
         while process.poll() is None:
@@ -114,10 +200,10 @@ def create(root, output):
             raise RuntimeError(f'Checkpoint compression failed: {process.returncode}')
     if archive.stat().st_size > MAX_ARCHIVE:
         raise RuntimeError('Checkpoint exceeds size limit')
-    expanded, count = inspect_archive(archive)
+    expanded, count = inspect_archive(archive, link_sources)
     manifest = {'schemaVersion': 1, 'createdAt': now(), 'context': context(), 'workspace': str(root),
                 'archiveSha256': digest(archive), 'archiveBytes': archive.stat().st_size,
-                'expandedBytes': expanded, 'entries': count, 'inputs': prepared['inputs'], **objects}
+                'expandedBytes': expanded, 'entries': count, 'inputs': prepared['inputs'], 'links': links, **objects}
     write_json(output / 'manifest.json', manifest)
     return digest(output / 'manifest.json')
 
@@ -134,13 +220,15 @@ def restore(root, source, manifest_sha):
     archive = source / 'checkpoint.zip'
     if archive.stat().st_size != manifest['archiveBytes'] or archive.stat().st_size > MAX_ARCHIVE or digest(archive) != manifest['archiveSha256']:
         raise RuntimeError('Checkpoint archive digest or size mismatch')
-    expanded, count = inspect_archive(archive)
+    link_sources = validate_links(manifest.get('links', []))
+    expanded, count = inspect_archive(archive, link_sources)
     if (expanded, count) != (manifest['expandedBytes'], manifest['entries']):
         raise RuntimeError('Checkpoint entry manifest mismatch')
     if shutil.disk_usage(root.parent).free < expanded + 40 * GIB:
         raise RuntimeError('Insufficient workspace capacity to restore and continue')
     root.mkdir()
     subprocess.run(['7z', 'x', str(archive), '-o' + str(root), '-y', '-bsp0'], check=True, timeout=45 * 60)
+    restore_links(root, manifest.get('links', []))
     prepared = json.loads((root / 'prepared.json').read_text(encoding='utf8'))
     if prepared.get('inputs') != manifest['inputs']:
         raise RuntimeError('Prepared inputs differ from manifest')
