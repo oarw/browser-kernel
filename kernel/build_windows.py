@@ -13,7 +13,7 @@ import re
 import shutil
 import subprocess
 import sys
-from build_support import digest, now, preflight, validate_prepared, validate_work_dir, workspace_lock, write_json
+from build_support import digest, now, preflight, run_windows_process, validate_prepared, validate_work_dir, workspace_lock, write_json
 
 HERE = Path(__file__).resolve().parent
 LOCK = json.loads((HERE / 'source-lock.json').read_text(encoding='utf8'))
@@ -152,17 +152,8 @@ def build(args, root):
                      'set GYP_MSVS_VERSION=2022', f'set "vs2022_install={toolchain["visualStudio"]}"',
                      subprocess.list2cmdline([str(value) for value in command]), 'exit /b %errorlevel%']
             script.write_text('\r\n'.join(lines) + '\r\n', encoding='utf8')
-            with subprocess.Popen(['cmd.exe', '/d', '/v:off', '/c', str(script)],
-                                  creationflags=subprocess.CREATE_NO_WINDOW, **kwargs) as process:
-                try:
-                    code = process.wait(timeout=timeout)
-                except BaseException:
-                    # Only terminate the tree launched by this build, including ninja children.
-                    subprocess.run(['taskkill', '/pid', str(process.pid), '/t', '/f'], capture_output=True)
-                    process.wait()
-                    raise
-                if code:
-                    raise subprocess.CalledProcessError(code, command)
+            print('Running:', subprocess.list2cmdline([str(value) for value in command]), flush=True)
+            run_windows_process(['cmd.exe', '/d', '/v:off', '/c', str(script)], timeout=timeout, **kwargs)
 
         if not marker.exists():
             phase('preparing')

@@ -27,6 +27,21 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+def run_windows_process(command, timeout=None, **kwargs):
+    kwargs.setdefault('stdin', subprocess.DEVNULL)
+    kwargs.setdefault('stdout', sys.stdout)
+    kwargs.setdefault('stderr', sys.stderr)
+    with subprocess.Popen(command, creationflags=subprocess.CREATE_NO_WINDOW, **kwargs) as process:
+        try:
+            code = process.wait(timeout=timeout)
+        except BaseException:
+            subprocess.run(['taskkill', '/pid', str(process.pid), '/t', '/f'], capture_output=True)
+            process.wait()
+            raise
+        if code:
+            raise subprocess.CalledProcessError(code, command)
+
+
 def write_json(path, value):
     """Publish complete JSON only; preserve the previous report on write failure."""
     path = Path(path)

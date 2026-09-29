@@ -51,15 +51,20 @@ jobs:
           compression-level: 0
           retention-days: 2
           if-no-files-found: error
+      - if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release/state | Out-Null
+          if (Test-Path release/preflight.json) { Copy-Item -LiteralPath release/preflight.json -Destination release/state/host-preflight.json }
+          foreach ($name in @('build-state.json', 'build-result.json', 'prepared.json', 'preflight-prepare.json', 'preflight-build.json')) {
+            $path = Join-Path 'D:\fb-kernel' $name
+            if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination release/state }
+          }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: capture-state-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            release/preflight.json
-            D:/fb-kernel/build-state.json
-            D:/fb-kernel/build-result.json
-            D:/fb-kernel/preflight-*.json
+          path: release/state/
           retention-days: 7
           if-no-files-found: warn
 
@@ -95,15 +100,21 @@ jobs:
           if ($LASTEXITCODE -ne 124) { throw "Expected a checkpoint slice; exit code: $LASTEXITCODE" }
           exit 0
       - run: python kernel/checkpoint.py verify-progress --work-dir D:\fb-kernel --source release/checkpoint --manifest-sha256 "$env:MANIFEST_SHA256" --output release/result.json
+      - if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release/state | Out-Null
+          foreach ($path in @('release/result.json', 'release/preflight.json')) {
+            if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination release/state }
+          }
+          foreach ($name in @('build-state.json', 'build-result.json', 'prepared.json', 'preflight-prepare.json', 'preflight-build.json')) {
+            $path = Join-Path 'D:\fb-kernel' $name
+            if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination release/state }
+          }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: resume-state-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            release/result.json
-            release/preflight.json
-            D:/fb-kernel/build-state.json
-            D:/fb-kernel/build-result.json
-            D:/fb-kernel/preflight-*.json
+          path: release/state/
           retention-days: 7
           if-no-files-found: warn
