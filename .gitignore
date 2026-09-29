@@ -1,0 +1,12 @@
+node_modules/
+release/
+out/
+build/
+downloads/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.log
+.env
+.env.*

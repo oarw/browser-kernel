@@ -1,0 +1,12 @@
+{
+  "name": "fingerbrowser-kernel",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test",
+    "test:kernel": "node scripts/verify-kernel.mjs"
+  }
+}

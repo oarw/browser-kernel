@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "chromiumVersion": "148.0.7778.215",
+  "sourceArchive": {
+    "url": "https://commondatastorage.googleapis.com/chromium-browser-official/chromium-148.0.7778.215-lite.tar.xz",
+    "size": 1593195044,
+    "sha256": "27b23b4c7877f41dcbf96fd3c17104f2de7c3df20569d9e19debba438094ba81"
+  },
+  "fingerprint": {
+    "repository": "https://github.com/adryfish/fingerprint-chromium.git",
+    "ref": "148.0.7778.215",
+    "commit": "13b89eae304123f0710f2d33fd0816a2f61d7ffc"
+  },
+  "windows": {
+    "repository": "https://github.com/ungoogled-software/ungoogled-chromium-windows.git",
+    "ref": "148.0.7778.215-1.1",
+    "commit": "f69a7a568bc1d1a90ca8765514a41cd6dec4c14a"
+  },
+  "patch": "patches/0001-fix-text-metrics.patch",
+  "targetFile": "third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc",
+  "postUpstreamSha256": "bfc2136bbda1aa1bffc55a7dcc8eb86b2d9ef2b7f1abdab6d37f48defdd81f6a",
+  "patchedSha256": "e993e29b2be81604572d6f02e413c01b6a68311a15b5e70cf31f3c05dce2a600"
+}

@@ -1,0 +1,21 @@
+--- a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
++++ b/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
+@@ -1202,14 +1202,10 @@
+     double norm_x = (hash_val_x & 0xFFFFFFFF) / 4294967295.0 - 0.5;
+     // 使用 0.00001 作为因子 (相当于原来的 1/100000.0)
+     double noise_x = norm_x * 0.00001;
+-    if (HostAsOffscreenCanvas()) {
+-      if (auto* window = DynamicTo<LocalDOMWindow>(GetTopExecutionContext())) {
+-        if (window->GetFrame() && window->GetFrame()->GetDocument() && text.length() > 0) {
+-          text_metrics->Shuffle(noise_x);
+-        }
+-      }
+-    } else if (canvas && text.length() > 0) {
+-      text_metrics->Shuffle(noise_x);
++    // Shuffle multiplies metrics; noise_x is an offset, not a scale factor.
++    // Apply the same seed-derived factor in document and worker contexts.
++    if (text.length() > 0) {
++      text_metrics->Shuffle(1.0 + noise_x);
+     }
+   }
+   return text_metrics;
