@@ -9,6 +9,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -18,6 +19,25 @@ HERE = Path(__file__).resolve().parent
 LOCK = json.loads((HERE / 'source-lock.json').read_text(encoding='utf8'))
 PREPARED_FILES = [LOCK['targetFile'], 'out/Default/args.gn', 'out/Default/build.ninja',
                   'out/Default/gn.exe', 'third_party/rust-toolchain/bin/bindgen.exe']
+
+
+def experimental_flags(original):
+    overrides = {'is_component_build': 'true', 'is_official_build': 'false', 'is_debug': 'false',
+                 'chrome_pgo_phase': '0', 'use_thin_lto': 'false', 'symbol_level': '0',
+                 'blink_symbol_level': '0', 'v8_symbol_level': '0'}
+    lines = []
+    seen = set()
+    for line in original.splitlines():
+        match = re.match(r'^\s*(\w+)\s*=', line)
+        key = match.group(1) if match else None
+        if key in overrides:
+            if key in seen:
+                raise RuntimeError(f'Duplicate GN setting: {key}')
+            seen.add(key)
+            line = f'{key}={overrides[key]}'
+        lines.append(line)
+    lines.extend(f'{key}={value}' for key, value in overrides.items() if key not in seen)
+    return '\n'.join(lines).rstrip() + '\n'
 
 
 def run(args, **kwargs):
@@ -101,13 +121,13 @@ def build(args, root):
         if series_path.read_text(encoding='utf8') not in [original_series, expected_series]:
             raise RuntimeError('Refusing to overwrite unrelated upstream patch series changes')
         original_flags = git(windows, 'show', 'HEAD:flags.windows.gn') + '\n'
-        experimental_flags = original_flags.replace('is_component_build=false', 'is_component_build=true').replace('is_official_build=true', 'is_official_build=false') + '\nuse_thin_lto=false\n'
+        flags = experimental_flags(original_flags)
         flag_path = windows / 'flags.windows.gn'
-        if flag_path.read_text(encoding='utf8') not in [original_flags, experimental_flags]:
+        if flag_path.read_text(encoding='utf8') not in [original_flags, flags]:
             raise RuntimeError('Refusing to overwrite unrelated Windows build flag changes')
 
         identity = {'lockSha256': digest(HERE / 'source-lock.json'), 'patchSha256': digest(patch),
-                    'flagsSha256': hashlib.sha256(experimental_flags.encode()).hexdigest(),
+                    'flagsSha256': hashlib.sha256(flags.encode()).hexdigest(),
                     'buildScriptSha256': digest(HERE / 'build_windows.py'),
                     'supportScriptSha256': digest(HERE / 'build_support.py'),
                     'requirementsSha256': digest(HERE / 'requirements.txt'),
@@ -120,7 +140,7 @@ def build(args, root):
             raise RuntimeError('Incomplete source preparation: inspect build-state.json/logs and use a new work directory; no source tree was deleted')
         overlay.write_bytes(patch.read_bytes())
         series_path.write_text(expected_series, encoding='utf8', newline='\n')
-        flag_path.write_text(experimental_flags, encoding='utf8', newline='\n')
+        flag_path.write_text(flags, encoding='utf8', newline='\n')
         temp = root / 'tmp'
         temp.mkdir(exist_ok=True)
         os.environ.update(TEMP=str(temp), TMP=str(temp), PYTHONUTF8='1', DEPOT_TOOLS_WIN_TOOLCHAIN='0')
@@ -197,6 +217,12 @@ def build(args, root):
         state.update(status='built', phase='built', browserCompiled=True, finishedAt=now())
         write_json(state_path, state)
     except BaseException as error:
+        if (isinstance(error, subprocess.TimeoutExpired) and state['phase'] == 'compiling'
+                and getattr(args, 'checkpoint_on_timeout', False)):
+            state.update(status='checkpoint-ready', finishedAt=now())
+            write_json(root / 'build-result.json', state)
+            write_json(state_path, state)
+            return 124
         state.update(status='failed', error=f'{type(error).__name__}: {error}', finishedAt=now())
         write_json(state_path, state)
         raise
@@ -208,6 +234,7 @@ def main():
     parser.add_argument('--prepare-only', action='store_true')
     parser.add_argument('--jobs', type=int, choices=range(1, 9), default=2)
     parser.add_argument('--build-timeout-minutes', type=int, default=210)
+    parser.add_argument('--checkpoint-on-timeout', action='store_true')
     args = parser.parse_args()
     if sys.platform != 'win32':
         parser.error('Windows is required')
@@ -219,8 +246,8 @@ def main():
         parser.error(str(error))
     root.mkdir(parents=True, exist_ok=True)
     with workspace_lock(root):
-        build(args, root)
+        return build(args, root)
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())
