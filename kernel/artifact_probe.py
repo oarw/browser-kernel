@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 import socket
 import stat
+import tempfile
+import uuid
 import zipfile
 
 from build_support import digest, write_json
@@ -28,7 +30,12 @@ def create(output):
         for name, data in contents.items():
             info = zipfile.ZipInfo(name, (2026, 1, 1, 0, 0, 0))
             writer.writestr(info, data)
+    marker = 'fb-probe-' + uuid.uuid4().hex
+    marker_root = Path(os.environ.get('RUNNER_TEMP', tempfile.gettempdir()))
+    marker_root.mkdir(parents=True, exist_ok=True)
+    (marker_root / marker).write_text('fixture', encoding='utf8')
     manifest = {'schemaVersion': 1, 'identity': identity(), 'host': socket.gethostname(),
+                'job': os.environ.get('GITHUB_JOB', 'local'), 'marker': marker,
                 'archiveSha256': digest(archive), 'files': {
                     name: {'sha256': hashlib.sha256(data).hexdigest(), 'size': len(data), 'mtime': STAMP}
                     for name, data in contents.items()}}
@@ -36,14 +43,20 @@ def create(output):
     return digest(output / 'manifest.json')
 
 
-def verify(source, output, manifest_sha256, require_new_host=False):
+def verify(source, output, manifest_sha256, require_clean_job=False):
     if digest(source / 'manifest.json') != manifest_sha256:
         raise RuntimeError('Manifest digest mismatch')
     manifest = json.loads((source / 'manifest.json').read_text(encoding='utf8'))
     if manifest.get('schemaVersion') != 1 or manifest.get('identity') != identity():
         raise RuntimeError('Fixture identity mismatch')
-    if require_new_host and manifest.get('host') == socket.gethostname():
-        raise RuntimeError('Expected another runner host')
+    marker = manifest.get('marker', '')
+    if len(marker) != 41 or not marker.startswith('fb-probe-') or any(c not in '0123456789abcdef' for c in marker[9:]):
+        raise RuntimeError('Invalid job marker')
+    marker_root = Path(os.environ.get('RUNNER_TEMP', tempfile.gettempdir()))
+    clean_storage = not (marker_root / marker).exists()
+    different_job = manifest.get('job') != os.environ.get('GITHUB_JOB', 'local')
+    if require_clean_job and (not different_job or not clean_storage):
+        raise RuntimeError('Expected another job with clean temporary storage')
     archive = source / 'fixture.zip'
     if archive.stat().st_size > 2 * 1024 * 1024 or digest(archive) != manifest['archiveSha256']:
         raise RuntimeError('Archive size or digest mismatch')
@@ -72,7 +85,8 @@ def verify(source, output, manifest_sha256, require_new_host=False):
         os.utime(target, (STAMP, STAMP))
         if digest(target) != manifest['files'][name]['sha256'] or target.stat().st_mtime_ns != STAMP * 10**9:
             raise RuntimeError('Restored fixture mismatch')
-    result = {'artifactRestored': True, 'differentHost': manifest['host'] != socket.gethostname(),
+    result = {'artifactRestored': True, 'hostnameChanged': manifest['host'] != socket.gethostname(),
+              'differentJob': different_job, 'freshJobStorage': clean_storage,
               'filesVerified': len(contents), 'timestampsVerified': True,
               'browserCompiled': False, 'browserAcceptancePassed': False}
     write_json(output / 'result.json', result)
@@ -85,7 +99,7 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--source', type=Path)
     parser.add_argument('--manifest-sha256')
-    parser.add_argument('--require-new-host', action='store_true')
+    parser.add_argument('--require-clean-job', action='store_true')
     args = parser.parse_args()
     if args.mode == 'create':
         value = create(args.output)
@@ -96,4 +110,4 @@ if __name__ == '__main__':
     else:
         if not args.source or not args.manifest_sha256:
             parser.error('verify requires --source and --manifest-sha256')
-        print(json.dumps(verify(args.source, args.output, args.manifest_sha256, args.require_new_host)))
+        print(json.dumps(verify(args.source, args.output, args.manifest_sha256, args.require_clean_job)))
