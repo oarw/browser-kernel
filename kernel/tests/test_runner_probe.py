@@ -17,13 +17,18 @@ class ProbeTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+        self.environment = patch.dict('os.environ', {'RUNNER_TEMP': str(self.root / 'job-a'), 'GITHUB_JOB': 'capture'})
+        self.environment.start()
+        self.addCleanup(self.environment.stop)
         self.source = self.root / 'source'
         self.checksum = artifact_probe.create(self.source)
 
     def test_artifact_roundtrip_keeps_content_hidden_files_and_timestamps(self):
-        with patch('artifact_probe.socket.gethostname', return_value='other-runner'):
+        with patch.dict('os.environ', {'RUNNER_TEMP': str(self.root / 'job-b'), 'GITHUB_JOB': 'restore'}):
             result = artifact_probe.verify(self.source, self.root / 'restored', self.checksum, True)
-        self.assertTrue(result['differentHost'])
+        self.assertTrue(result['differentJob'])
+        self.assertTrue(result['freshJobStorage'])
+        self.assertFalse(result['hostnameChanged'])
         self.assertTrue(result['timestampsVerified'])
         self.assertTrue((self.root / 'restored/out/.ninja_log').is_file())
         self.assertFalse(result['browserCompiled'])
@@ -34,8 +39,11 @@ class ProbeTests(unittest.TestCase):
         with patch.dict('os.environ', {'GITHUB_RUN_ID': 'another-run'}):
             with self.assertRaisesRegex(RuntimeError, 'identity'):
                 artifact_probe.verify(self.source, self.root / 'restored', self.checksum)
-        with self.assertRaisesRegex(RuntimeError, 'another runner'):
+        with self.assertRaisesRegex(RuntimeError, 'another job'):
             artifact_probe.verify(self.source, self.root / 'restored', self.checksum, True)
+        with patch.dict('os.environ', {'GITHUB_JOB': 'restore'}):
+            with self.assertRaisesRegex(RuntimeError, 'another job'):
+                artifact_probe.verify(self.source, self.root / 'restored', self.checksum, True)
         with (self.source / 'fixture.zip').open('ab') as stream:
             stream.write(b'changed')
         with self.assertRaisesRegex(RuntimeError, 'Archive size or digest'):

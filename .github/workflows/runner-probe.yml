@@ -63,7 +63,7 @@ jobs:
           artifact-ids: ${{ needs.capture.outputs.artifact_id }}
           merge-multiple: true
           path: release/downloaded
-      - run: python kernel/artifact_probe.py verify --source release/downloaded --output release/restored --manifest-sha256 "$env:MANIFEST_SHA256" --require-new-host
+      - run: python kernel/artifact_probe.py verify --source release/downloaded --output release/restored --manifest-sha256 "$env:MANIFEST_SHA256" --require-clean-job
         env:
           MANIFEST_SHA256: ${{ needs.capture.outputs.manifest_sha256 }}
       - run: python kernel/runner_probe.py --output release/restored/resources.json
