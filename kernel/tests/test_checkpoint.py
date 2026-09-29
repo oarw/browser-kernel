@@ -136,7 +136,10 @@ class CheckpointTests(unittest.TestCase):
         tree = (self.root / 'tree').resolve()
         output = tree / 'windows/build/src/out/Default'
         output.mkdir(parents=True)
-        (output / 'sample.obj').write_bytes(b'object')
+        obj = output / 'sample.obj'
+        obj.write_bytes(b'object')
+        timestamp = 1767225600 * 10**9 + 123456700
+        os.utime(obj, ns=(timestamp, timestamp))
         (output / '.ninja_log').write_text('# ninja log v5\n0\t1\t1\tsample.obj\tabc\n')
         executable = output / 'chrome.exe'
         executable.write_bytes(b'fixture executable')
