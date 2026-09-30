@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "inputs": {
+    "lockSha256": "fcde908750049e7609bd9927ec46cc0fafbc24c88212ce4da89b35f5f945d0a3",
+    "patchSha256": "250027c4b29b2eec88d0ab9c1c681c62e61eb45a5adfcba4596278a047f1f145",
+    "flagsSha256": "a0eda9a47790271f4380df733f071a79843f6bd57a4202910759a36b9ad8c370",
+    "buildScriptSha256": "76dfcfa0c866b99eae0954bab15c637198fdbf56ee9a57ff2fea9319240cf5a9",
+    "supportScriptSha256": "1a13539ed0a221a7b116e80c63b17899b1f6169d5dfbd2acc747052591c1719a",
+    "requirementsSha256": "297afe6ffa8287271ff40ce1053bb3e5041edb9334fd77e88ab869417d6b1128",
+    "pythonVersion": "3.12.10",
+    "toolchain": {
+      "visualStudio": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise",
+      "vcvars": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\VC\\Auxiliary\\Build\\vcvars64.bat",
+      "msvc": "14.44.35207",
+      "sdk": "10.0.26100.0",
+      "sdkRoot": "C:\\Program Files (x86)\\Windows Kits\\10",
+      "longPathsEnabled": true
+    }
+  },
+  "preparedAt": "2026-09-29T12:51:24.601636+00:00",
+  "sourceSha256": "e993e29b2be81604572d6f02e413c01b6a68311a15b5e70cf31f3c05dce2a600",
+  "preparedFiles": {
+    "third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc": "e993e29b2be81604572d6f02e413c01b6a68311a15b5e70cf31f3c05dce2a600",
+    "out/Default/args.gn": "2473f035d91e8af909a38ce7cb5064d17ddc0b3d46cd79f9324a510d1b4525be",
+    "out/Default/build.ninja": "8ad89e4346952a8d40c964d5297103438d3a2b3c8b8cacd8ac3b1fdb654fbd23",
+    "out/Default/gn.exe": "93b4dee0bdc7fb1aeb6c49009457f87c29a3f138da26e021c537ebd78673826b",
+    "third_party/rust-toolchain/bin/bindgen.exe": "3dac03243695679c8f174e366112066aa2b44bbda8a17d8f575e15a65ee09cec"
+  }
+}

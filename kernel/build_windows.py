@@ -14,11 +14,14 @@ import shutil
 import subprocess
 import sys
 from build_support import digest, now, preflight, run_windows_process, validate_prepared, validate_work_dir, workspace_lock, write_json
+from source_overlays import install_overlays, load_overlays, overlay_identity, targets, validate_sources
+from migrate_prepared import migrate
 
 HERE = Path(__file__).resolve().parent
 LOCK = json.loads((HERE / 'source-lock.json').read_text(encoding='utf8'))
+OVERLAYS = load_overlays()
 PREPARED_FILES = [LOCK['targetFile'], 'out/Default/args.gn', 'out/Default/build.ninja',
-                  'out/Default/gn.exe', 'third_party/rust-toolchain/bin/bindgen.exe']
+                  'out/Default/gn.exe', 'third_party/rust-toolchain/bin/bindgen.exe', *targets(OVERLAYS)]
 
 
 def experimental_flags(original):
@@ -117,8 +120,12 @@ def build(args, root):
             raise RuntimeError('Existing overlay differs; use a new work directory')
         original_series = git(core, 'show', 'HEAD:patches/series') + '\n'
         series_path = core / 'patches/series'
-        expected_series = original_series.rstrip() + '\n' + overlay_name + '\n'
-        if series_path.read_text(encoding='utf8') not in [original_series, expected_series]:
+        legacy_series = original_series.rstrip() + '\n' + overlay_name + '\n'
+        expected_series = legacy_series + ''.join(item['seriesName'] + '\n' for item in OVERLAYS)
+        allowed_series = [original_series, expected_series]
+        if getattr(args, 'migrate_prepared', False):
+            allowed_series.append(legacy_series)
+        if series_path.read_text(encoding='utf8') not in allowed_series:
             raise RuntimeError('Refusing to overwrite unrelated upstream patch series changes')
         original_flags = git(windows, 'show', 'HEAD:flags.windows.gn') + '\n'
         flags = experimental_flags(original_flags)
@@ -131,16 +138,17 @@ def build(args, root):
                     'buildScriptSha256': digest(HERE / 'build_windows.py'),
                     'supportScriptSha256': digest(HERE / 'build_support.py'),
                     'requirementsSha256': digest(HERE / 'requirements.txt'),
-                    'pythonVersion': inspection['python']['version'], 'toolchain': toolchain}
+                    'pythonVersion': inspection['python']['version'], 'toolchain': toolchain,
+                    **overlay_identity(OVERLAYS)}
         state['inputs'] = identity
+        migration_needed = False
         if marker.exists():
             prepared = json.loads(marker.read_text(encoding='utf8'))
-            validate_prepared(prepared, identity, source, PREPARED_FILES)
+            migration_needed = prepared.get('inputs') != identity and getattr(args, 'migrate_prepared', False)
+            if not migration_needed:
+                validate_prepared(prepared, identity, source, PREPARED_FILES)
         elif source.exists() and any(source.iterdir()):
             raise RuntimeError('Incomplete source preparation: inspect build-state.json/logs and use a new work directory; no source tree was deleted')
-        overlay.write_bytes(patch.read_bytes())
-        series_path.write_text(expected_series, encoding='utf8', newline='\n')
-        flag_path.write_text(flags, encoding='utf8', newline='\n')
         temp = root / 'tmp'
         temp.mkdir(exist_ok=True)
         os.environ.update(TEMP=str(temp), TMP=str(temp), PYTHONUTF8='1', DEPOT_TOOLS_WIN_TOOLCHAIN='0')
@@ -155,6 +163,17 @@ def build(args, root):
             print('Running:', subprocess.list2cmdline([str(value) for value in command]), flush=True)
             run_windows_process(['cmd.exe', '/d', '/v:off', '/c', str(script)], timeout=timeout, **kwargs)
 
+        if migration_needed:
+            if series_path.read_text(encoding='utf8') != legacy_series or flag_path.read_text(encoding='utf8') != flags:
+                raise RuntimeError('Legacy series or flags are not exactly the prepared inputs')
+            phase('migrating')
+            migrate(root, identity, OVERLAYS, PREPARED_FILES,
+                    lambda: build_process('out\\Default\\gn.exe', 'gen', 'out\\Default', cwd=source, timeout=600))
+        install_overlays(core, OVERLAYS)
+        overlay.write_bytes(patch.read_bytes())
+        series_path.write_text(expected_series, encoding='utf8', newline='\n')
+        flag_path.write_text(flags, encoding='utf8', newline='\n')
+
         if not marker.exists():
             phase('preparing')
             spec = importlib.util.spec_from_file_location('windows_recipe', windows / 'build.py')
@@ -165,6 +184,7 @@ def build(args, root):
                 actual = hashlib.sha256((source / LOCK['targetFile']).read_text(encoding='utf8').encode()).hexdigest()
                 if actual != LOCK['patchedSha256']:
                     raise RuntimeError('Final native source does not match the reviewed patched file')
+                validate_sources(source, OVERLAYS)
                 prepared = {'schemaVersion': 1, 'inputs': identity, 'preparedAt': now(), 'sourceSha256': actual,
                             'preparedFiles': {name: digest(source / name) for name in PREPARED_FILES}}
                 write_json(marker, prepared)
@@ -226,6 +246,7 @@ def main():
     parser.add_argument('--jobs', type=int, choices=range(1, 9), default=2)
     parser.add_argument('--build-timeout-minutes', type=int, default=210)
     parser.add_argument('--checkpoint-on-timeout', action='store_true')
+    parser.add_argument('--migrate-prepared', action='store_true', help='Allow only the reviewed legacy checkpoint migration')
     args = parser.parse_args()
     if sys.platform != 'win32':
         parser.error('Windows is required')
