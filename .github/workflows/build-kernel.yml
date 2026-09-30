@@ -83,6 +83,10 @@ jobs:
         env:
           MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
         run: python kernel/checkpoint.py restore --work-dir D:\fb-kernel --source release/source-checkpoint --manifest-sha256 "$env:MANIFEST_SHA256" --trusted-source release/trusted-source.json
+      - name: Validate restored precompiled headers
+        if: inputs.source_run != ''
+        timeout-minutes: 15
+        run: python kernel/pch_recovery.py --work-dir D:\fb-kernel --output release/pch-recovery.json
       - run: python kernel/preflight.py --work-dir D:\fb-kernel --phase prepare --output release/preflight.json
         if: inputs.source_run == ''
       - run: python kernel/download_source.py --work-dir D:\fb-kernel
@@ -130,7 +134,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path release/state | Out-Null
-          foreach ($path in @('release/budget.json', 'release/preflight.json', 'release/checkpoint/manifest.json', 'release/trusted-source.json', 'release/resume-progress.json')) {
+          foreach ($path in @('release/budget.json', 'release/preflight.json', 'release/checkpoint/manifest.json', 'release/trusted-source.json', 'release/resume-progress.json', 'release/pch-recovery.json')) {
             if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination release/state }
           }
           foreach ($name in @('build-state.json', 'build-result.json', 'prepared.json', 'preflight-prepare.json', 'preflight-build.json')) {
