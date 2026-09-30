@@ -30,7 +30,7 @@ def validate_legacy(prepared, identity, source, overlays, legacy):
         if key != 'buildScriptSha256' and identity.get(key) != value:
             raise RuntimeError(f'Migration changed an unsupported input: {key}')
     validate_prepared(prepared, legacy['inputs'], source, list(legacy['preparedFiles']))
-    validate_sources(source, overlays, 'postUpstreamSha256')
+    validate_sources(source, overlays, 'preparedBeforeSha256')
 
 
 def migrate(root, identity, overlays, prepared_files, regenerate):
@@ -45,15 +45,16 @@ def migrate(root, identity, overlays, prepared_files, regenerate):
     try:
         validate_legacy(prepared, identity, source, overlays, legacy)
         for item in overlays:
-            subprocess.run(['git', 'apply', '--check', str(HERE / item['patch'])],
-                           cwd=source, check=True, timeout=30)
+            subprocess.run(['git', 'apply', '--directory=build/src', '--check', str(HERE / item['patch'])],
+                           cwd=root / 'windows', check=True, timeout=30)
         before = command_fingerprint(source, root / 'migration-commands-before.txt')
         unchanged = {name: value for name, value in legacy['preparedFiles'].items()
                      if name != 'out/Default/build.ninja'}
         report.update(status='applying', sourceBefore={name: digest(source / name) for name in targets(overlays)})
         write_json(report_path, report)
         for item in overlays:
-            subprocess.run(['git', 'apply', str(HERE / item['patch'])], cwd=source, check=True, timeout=30)
+            subprocess.run(['git', 'apply', '--directory=build/src', str(HERE / item['patch'])],
+                           cwd=root / 'windows', check=True, timeout=30)
         validate_sources(source, overlays)
         regenerate()
         for name, expected in unchanged.items():
