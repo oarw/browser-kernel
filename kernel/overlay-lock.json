@@ -26,6 +26,17 @@
           "patchedSha256": "115aa7245c610a3fe5969cacfaa7bc22ab47557947f59ca02a45e671e794228f"
         }
       ]
+    },
+    {
+      "patch": "patches/0004-local-password-tests.patch",
+      "seriesName": "extra/fingerprint/999-fingerbrowser-local-password-tests.patch",
+      "files": [
+        {
+          "path": "components/password_manager/core/browser/password_feature_manager_impl_unittest.cc",
+          "postUpstreamSha256": "e1b25e111bfe85e83eb61f14269902d2c5a119f195fdb1e2c3ad72e15c7d60af",
+          "patchedSha256": "f0c0717198b01ca33737d7b6446d1d0b9aa51340dc4bfb05e4856a113bd5c248"
+        }
+      ]
     }
   ],
   "schemaVersion": 1
