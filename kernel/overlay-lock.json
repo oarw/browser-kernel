@@ -40,9 +40,9 @@
         {
           "path": "components/password_manager/core/browser/password_feature_manager_impl_unittest.cc",
           "postUpstreamSha256": "e1b25e111bfe85e83eb61f14269902d2c5a119f195fdb1e2c3ad72e15c7d60af",
-          "patchedSha256": "cb546f30815a73e04c1a298ab7f38c702c3af16c2630ec18066e7731e547c2de",
+          "patchedSha256": "4e2115e653716cc968ba2b0aa26b9b2f6d62a4da3e07cb609df19ad21f07d2af",
           "preparedBeforeSha256": "179f67bbf76e52de999701bb03eac4e4af95498a4daebbee3d7f1c30a4329952",
-          "preparedSha256": "a7c13c25acd586f980f973c16836a257363e29feddeb65ac72bbfa34e50a07de"
+          "preparedSha256": "3ff624096d55cac110f447484f1bba93db3c97e78514276d1133db32fb2fed12"
         }
       ]
     }
