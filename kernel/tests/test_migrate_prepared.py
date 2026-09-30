@@ -25,7 +25,9 @@ class MigrationTests(unittest.TestCase):
         self.repository = self.root / 'recipe'
         self.repository.mkdir()
         (self.source / 'out/Default').mkdir(parents=True)
-        subprocess.run(['git', 'init', str(self.source)], capture_output=True, check=True)
+        # The tarball source is an untracked subdirectory of the Windows recipe
+        # Git checkout in production, not a separate Git repository.
+        subprocess.run(['git', 'init', str(self.root / 'windows')], capture_output=True, check=True)
         for name, data in [('input.cc', 'old source\n'), ('out/Default/args.gn', 'unchanged flags\n'),
                            ('out/Default/build.ninja', 'old graph\n')]:
             (self.source / name).write_text(data, encoding='utf8', newline='\n')
