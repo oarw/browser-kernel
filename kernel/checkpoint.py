@@ -9,6 +9,7 @@ import time
 import zipfile
 
 from build_support import GIB, digest, now, validate_work_dir, write_json
+from checkpoint_source import receipt_context
 
 MAX_ARCHIVE = 20 * GIB
 MAX_TREE = 120 * GIB
@@ -217,15 +218,18 @@ def create(root, output):
     return digest(output / 'manifest.json')
 
 
-def restore(root, source, manifest_sha):
+def restore(root, source, manifest_sha, trusted_source=None):
     root = root.resolve()
     if root.exists():
         raise RuntimeError('Restore requires an absent workspace')
     if digest(source / 'manifest.json') != manifest_sha:
         raise RuntimeError('Checkpoint manifest digest mismatch')
     manifest = json.loads((source / 'manifest.json').read_text(encoding='utf8'))
-    if manifest.get('schemaVersion') != 1 or manifest.get('context') != context() or manifest.get('workspace') != str(root):
+    expected_context = context() if trusted_source is None else receipt_context(trusted_source, context(), manifest_sha)
+    if manifest.get('schemaVersion') != 1 or manifest.get('context') != expected_context or manifest.get('workspace') != str(root):
         raise RuntimeError('Checkpoint identity mismatch')
+    if trusted_source is not None and manifest.get('buildStatus') != 'checkpoint-ready':
+        raise RuntimeError('Cross-run continuation requires an incomplete checkpoint')
     archive = source / 'checkpoint.zip'
     if archive.stat().st_size != manifest['archiveBytes'] or archive.stat().st_size > MAX_ARCHIVE or digest(archive) != manifest['archiveSha256']:
         raise RuntimeError('Checkpoint archive digest or size mismatch')
@@ -252,6 +256,7 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=Path)
     parser.add_argument('--source', type=Path)
     parser.add_argument('--manifest-sha256')
+    parser.add_argument('--trusted-source', type=Path)
     args = parser.parse_args()
     root = validate_work_dir(args.work_dir, Path(__file__).resolve().parent.parent)
     if args.mode == 'create':
@@ -266,7 +271,8 @@ if __name__ == '__main__':
         if not args.source or not args.manifest_sha256:
             parser.error('--source and --manifest-sha256 required')
         if args.mode == 'restore':
-            restored = restore(root, args.source.resolve(), args.manifest_sha256)
+            receipt = json.loads(args.trusted_source.read_text(encoding='utf8')) if args.trusted_source else None
+            restored = restore(root, args.source.resolve(), args.manifest_sha256, receipt)
             print(json.dumps({'restored': True, 'samples': len(restored['samples'])}))
         else:
             if digest(args.source / 'manifest.json') != args.manifest_sha256:
@@ -280,4 +286,5 @@ if __name__ == '__main__':
                 parser.error('--output required')
             write_json(args.output, {'resumed': True, 'preservedSamples': len(before['samples']),
                                     'before': before['completedOutputs'], 'after': after['completedOutputs'],
-                                    'browserCompiled': False, 'browserAcceptancePassed': False})
+                                    'browserCompiled': json.loads((root / 'build-state.json').read_text(encoding='utf8')).get('browserCompiled') is True,
+                                    'browserAcceptancePassed': False})

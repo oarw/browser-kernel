@@ -1,9 +1,26 @@
 name: build-kernel
 on:
   workflow_dispatch:
+    inputs:
+      source_run:
+        description: 'Previous successful build run ID (leave all source fields empty for a fresh build)'
+        type: string
+      source_attempt:
+        description: 'Previous run attempt'
+        type: string
+      source_commit:
+        description: 'Previous run full commit SHA'
+        type: string
+      source_artifact:
+        description: 'Exact checkpoint artifact ID'
+        type: string
+      manifest_sha256:
+        description: 'Manifest SHA-256 verified from the previous build state artifact'
+        type: string
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: kernel-build
@@ -15,7 +32,7 @@ env:
 
 jobs:
   build:
-    if: github.event.repository.private == false
+    if: github.event.repository.private == false && github.ref == 'refs/heads/main'
     runs-on: windows-2022
     timeout-minutes: 360
     steps:
@@ -29,10 +46,49 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r kernel/requirements.txt
+      - name: Validate recovery inputs
+        shell: pwsh
+        env:
+          SOURCE_RUN: ${{ inputs.source_run }}
+          SOURCE_ATTEMPT: ${{ inputs.source_attempt }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          SOURCE_ARTIFACT: ${{ inputs.source_artifact }}
+          MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+        run: |
+          $values = @($env:SOURCE_RUN, $env:SOURCE_ATTEMPT, $env:SOURCE_COMMIT, $env:SOURCE_ARTIFACT, $env:MANIFEST_SHA256)
+          $provided = @($values | Where-Object { $_ -ne '' }).Count
+          if ($provided -notin @(0, 5)) { throw 'Provide all five recovery inputs or leave all empty' }
+      - name: Verify checkpoint source
+        if: inputs.source_run != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ inputs.source_run }}
+          SOURCE_ATTEMPT: ${{ inputs.source_attempt }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          SOURCE_ARTIFACT: ${{ inputs.source_artifact }}
+          MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+        run: python kernel/checkpoint_source.py --run-id "$env:SOURCE_RUN" --attempt "$env:SOURCE_ATTEMPT" --commit "$env:SOURCE_COMMIT" --artifact-id "$env:SOURCE_ARTIFACT" --manifest-sha256 "$env:MANIFEST_SHA256" --output release/trusted-source.json
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: inputs.source_run != ''
+        timeout-minutes: 15
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.source_run }}
+          artifact-ids: ${{ inputs.source_artifact }}
+          merge-multiple: true
+          path: release/source-checkpoint
+      - name: Restore verified checkpoint
+        if: inputs.source_run != ''
+        timeout-minutes: 45
+        env:
+          MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+        run: python kernel/checkpoint.py restore --work-dir D:\fb-kernel --source release/source-checkpoint --manifest-sha256 "$env:MANIFEST_SHA256" --trusted-source release/trusted-source.json
       - run: python kernel/preflight.py --work-dir D:\fb-kernel --phase prepare --output release/preflight.json
+        if: inputs.source_run == ''
       - run: python kernel/download_source.py --work-dir D:\fb-kernel
         timeout-minutes: 15
       - run: python -u kernel/build_windows.py --work-dir D:\fb-kernel --jobs 2 --prepare-only
+        if: inputs.source_run == ''
         timeout-minutes: 150
       - id: budget
         run: python kernel/build_budget.py --started-at "$env:BUILD_STARTED_AT" --output release/budget.json
@@ -52,6 +108,11 @@ jobs:
           }
           "status=$($state.status)" >> $env:GITHUB_OUTPUT
           exit 0
+      - name: Verify resumed progress
+        if: inputs.source_run != ''
+        env:
+          MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+        run: python kernel/checkpoint.py verify-progress --work-dir D:\fb-kernel --source release/source-checkpoint --manifest-sha256 "$env:MANIFEST_SHA256" --output release/resume-progress.json
       - id: checkpoint
         run: python kernel/checkpoint.py create --work-dir D:\fb-kernel --output release/checkpoint
         timeout-minutes: 35
@@ -69,7 +130,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path release/state | Out-Null
-          foreach ($path in @('release/budget.json', 'release/preflight.json', 'release/checkpoint/manifest.json')) {
+          foreach ($path in @('release/budget.json', 'release/preflight.json', 'release/checkpoint/manifest.json', 'release/trusted-source.json', 'release/resume-progress.json')) {
             if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination release/state }
           }
           foreach ($name in @('build-state.json', 'build-result.json', 'prepared.json', 'preflight-prepare.json', 'preflight-build.json')) {
