@@ -20,7 +20,7 @@ def source_digest(path):
     return hashlib.sha256(path.read_text(encoding='utf8').encode()).hexdigest()
 
 
-def validate_sources(source, overlays, field='patchedSha256'):
+def validate_sources(source, overlays, field='preparedSha256'):
     for name, item in targets(overlays).items():
         path = source / name
         if not path.is_file() or path.is_symlink() or not path.resolve().is_relative_to(source.resolve()):

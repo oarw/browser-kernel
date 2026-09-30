@@ -28,6 +28,10 @@ class MigrationTests(unittest.TestCase):
         # The tarball source is an untracked subdirectory of the Windows recipe
         # Git checkout in production, not a separate Git repository.
         subprocess.run(['git', 'init', str(self.root / 'windows')], capture_output=True, check=True)
+        (self.root / 'windows/recipe.txt').write_text('tracked recipe')
+        subprocess.run(['git', 'add', 'recipe.txt'], cwd=self.root / 'windows', check=True)
+        subprocess.run(['git', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+                        'commit', '-m', 'recipe'], cwd=self.root / 'windows', capture_output=True, check=True)
         for name, data in [('input.cc', 'old source\n'), ('out/Default/args.gn', 'unchanged flags\n'),
                            ('out/Default/build.ninja', 'old graph\n')]:
             (self.source / name).write_text(data, encoding='utf8', newline='\n')
@@ -40,8 +44,8 @@ class MigrationTests(unittest.TestCase):
         self.identity = copy.deepcopy(self.original['inputs'])
         self.identity['buildScriptSha256'] = 'new'
         self.overlays = [{'patch': 'fix.patch', 'seriesName': 'extra/fix.patch', 'files': [{
-            'path': 'input.cc', 'postUpstreamSha256': source_digest(self.source / 'input.cc'),
-            'patchedSha256': hashlib.sha256(b'new source\n').hexdigest()}]}]
+            'path': 'input.cc', 'preparedBeforeSha256': source_digest(self.source / 'input.cc'),
+            'preparedSha256': hashlib.sha256(b'new source\n').hexdigest()}]}]
         (self.repository / 'fix.patch').write_text(''.join(difflib.unified_diff(
             ['old source\n'], ['new source\n'], fromfile='a/input.cc', tofile='b/input.cc')),
             encoding='utf8', newline='\n')

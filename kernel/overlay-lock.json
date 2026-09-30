@@ -7,7 +7,9 @@
         {
           "path": "third_party/blink/common/BUILD.gn",
           "postUpstreamSha256": "a99021a20b909321196a3656666c8449c05c9bda65621a35b9483b01ec207f4a",
-          "patchedSha256": "dc97181afece1371c660215c9366595f63afea40efefb0a11951785c2c1e2e4b"
+          "patchedSha256": "dc97181afece1371c660215c9366595f63afea40efefb0a11951785c2c1e2e4b",
+          "preparedBeforeSha256": "a99021a20b909321196a3656666c8449c05c9bda65621a35b9483b01ec207f4a",
+          "preparedSha256": "dc97181afece1371c660215c9366595f63afea40efefb0a11951785c2c1e2e4b"
         }
       ]
     },
@@ -18,12 +20,16 @@
         {
           "path": "components/password_manager/core/browser/password_manager.cc",
           "postUpstreamSha256": "47b0c66c4cf0159e5274e7090c0272399c023075e3e6df665a384185a01aa1f8",
-          "patchedSha256": "8e68dce8fe73a2521ce054d2fa87029591259ac069edf82e023d4e9d849c8dec"
+          "patchedSha256": "8e68dce8fe73a2521ce054d2fa87029591259ac069edf82e023d4e9d849c8dec",
+          "preparedBeforeSha256": "7e97f56cf688e21b925988dfa7d986038c27349018de7bf82151c3b363964e52",
+          "preparedSha256": "edcb44eb5b0b86eb7c310ddf92fb71b419521cf0ec6318b86069f6cd233e61c0"
         },
         {
           "path": "components/password_manager/core/browser/password_feature_manager_impl.cc",
           "postUpstreamSha256": "35d0a50bcb4f5eeb86a56133d80f8500c49b8691c7e955c9236753e98c5037a9",
-          "patchedSha256": "115aa7245c610a3fe5969cacfaa7bc22ab47557947f59ca02a45e671e794228f"
+          "patchedSha256": "115aa7245c610a3fe5969cacfaa7bc22ab47557947f59ca02a45e671e794228f",
+          "preparedBeforeSha256": "35d0a50bcb4f5eeb86a56133d80f8500c49b8691c7e955c9236753e98c5037a9",
+          "preparedSha256": "115aa7245c610a3fe5969cacfaa7bc22ab47557947f59ca02a45e671e794228f"
         }
       ]
     },
@@ -34,7 +40,9 @@
         {
           "path": "components/password_manager/core/browser/password_feature_manager_impl_unittest.cc",
           "postUpstreamSha256": "e1b25e111bfe85e83eb61f14269902d2c5a119f195fdb1e2c3ad72e15c7d60af",
-          "patchedSha256": "f0c0717198b01ca33737d7b6446d1d0b9aa51340dc4bfb05e4856a113bd5c248"
+          "patchedSha256": "cb546f30815a73e04c1a298ab7f38c702c3af16c2630ec18066e7731e547c2de",
+          "preparedBeforeSha256": "179f67bbf76e52de999701bb03eac4e4af95498a4daebbee3d7f1c30a4329952",
+          "preparedSha256": "a7c13c25acd586f980f973c16836a257363e29feddeb65ac72bbfa34e50a07de"
         }
       ]
     }
