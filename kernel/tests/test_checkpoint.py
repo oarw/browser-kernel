@@ -173,6 +173,44 @@ class CheckpointTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'Duplicate'):
             experimental_flags('chrome_pgo_phase=2\nchrome_pgo_phase=1\n')
 
+    @unittest.skipUnless(shutil.which('7z'), '7z not installed')
+    def test_cross_run_roundtrip_requires_receipt_and_preserves_source_manifest(self):
+        tree = (self.root / 'tree').resolve()
+        output = tree / 'windows/build/src/out/Default'
+        output.mkdir(parents=True)
+        (output / 'sample.obj').write_bytes(b'completed object')
+        timestamp = 1767225600 * 10**9 + 123456700
+        os.utime(output / 'sample.obj', ns=(timestamp, timestamp))
+        (output / '.ninja_log').write_text('# ninja log v5\n0\t1\t1\tsample.obj\tabc\n')
+        write_json(tree / 'prepared.json', {'inputs': {'fixture': True}})
+        state = {'status': 'checkpoint-ready', 'inputs': {'fixture': True}}
+        write_json(tree / 'build-state.json', state)
+        write_json(tree / 'build-result.json', state)
+        old = {'GITHUB_REPOSITORY': 'owner/kernel', 'GITHUB_SHA': 'a' * 40,
+               'GITHUB_RUN_ID': '100', 'GITHUB_RUN_ATTEMPT': '1'}
+        current = old | {'GITHUB_SHA': 'b' * 40, 'GITHUB_RUN_ID': '200'}
+        artifact = self.root / 'artifact'
+        with patch('checkpoint.shutil.disk_usage', return_value=SimpleNamespace(free=1024**4)):
+            with patch.dict(os.environ, old):
+                checksum = checkpoint.create(tree, artifact)
+            backup = tree.with_name('original-tree')
+            self.assertEqual(backup.parent, self.root.resolve())
+            tree.rename(backup)
+            receipt = {'schemaVersion': 1, 'targetContext': current, 'sourceContext': old,
+                       'artifactId': 300, 'manifestSha256': checksum}
+            with patch.dict(os.environ, current):
+                with self.assertRaisesRegex(RuntimeError, 'identity'):
+                    checkpoint.restore(tree, artifact, checksum)
+                for bad in (receipt | {'targetContext': old}, receipt | {'manifestSha256': 'c' * 64}):
+                    with self.assertRaisesRegex(RuntimeError, 'receipt'):
+                        checkpoint.restore(tree, artifact, checksum, bad)
+                    self.assertFalse(tree.exists())
+                restored = checkpoint.restore(tree, artifact, checksum, receipt)
+                self.assertEqual(checkpoint.context(), current)
+        self.assertEqual(restored['context'], old)
+        self.assertEqual(digest(artifact / 'manifest.json'), checksum)
+        self.assertEqual((output / 'sample.obj').stat().st_mtime_ns, timestamp)
+
 
 if __name__ == '__main__':
     unittest.main()
