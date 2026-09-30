@@ -3,7 +3,7 @@
 *.mjs text eol=lf
 *.js text eol=lf
 *.json text eol=lf
-*.patch text eol=lf
+*.patch text eol=lf whitespace=-blank-at-eol
 *.txt text eol=lf
 *.md text eol=lf
 *.yml text eol=lf

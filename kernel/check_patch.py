@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import tempfile
 import urllib.request
+from source_overlays import load_overlays, targets, validate_sources
 
 HERE = Path(__file__).resolve().parent
 
@@ -31,11 +32,15 @@ def check(output):
         if commit != lock['fingerprint']['commit']:
             raise RuntimeError('Upstream patch tag no longer matches the locked commit')
         tree = scratch / 'source'
+        overlays = load_overlays()
+        names = [lock['targetFile'], *targets(overlays)]
+        for name in names:
+            target = tree / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            url = f"https://raw.githubusercontent.com/chromium/chromium/{lock['chromiumVersion']}/{name}"
+            with urllib.request.urlopen(url, timeout=30) as response:
+                target.write_bytes(response.read())
         target = tree / lock['targetFile']
-        target.parent.mkdir(parents=True)
-        url = f"https://raw.githubusercontent.com/chromium/chromium/{lock['chromiumVersion']}/{lock['targetFile']}"
-        with urllib.request.urlopen(url, timeout=30) as response:
-            target.write_bytes(response.read())
         run(['git', 'init', tree], capture_output=True)
         applied = []
         for name in (upstream / 'patches/series').read_text(encoding='utf8').splitlines():
@@ -43,9 +48,10 @@ def check(output):
             if not name or name.startswith('#'):
                 continue
             data = (upstream / 'patches' / name).read_text(encoding='utf8')
-            if lock['targetFile'] not in data:
+            if not any(name in data for name in names):
                 continue
-            run(['git', 'apply', '--whitespace=nowarn', '--ignore-space-change', '--ignore-whitespace', '--include=' + lock['targetFile'], '-'], cwd=tree, input=data.encode())
+            run(['git', 'apply', '--whitespace=nowarn', '--ignore-space-change', '--ignore-whitespace',
+                 *['--include=' + name for name in names], '-'], cwd=tree, input=data.encode())
             applied.append(name)
         before = hashlib.sha256(target.read_text(encoding='utf8').encode()).hexdigest()
         if before != lock['postUpstreamSha256']:
@@ -56,9 +62,14 @@ def check(output):
         after = hashlib.sha256(target.read_text(encoding='utf8').encode()).hexdigest()
         if after != lock['patchedSha256']:
             raise RuntimeError(f'Unexpected source after native fix: {after}')
+        validate_sources(tree, overlays, 'postUpstreamSha256')
+        for item in overlays:
+            run(['git', 'apply', '--check', HERE / item['patch']], cwd=tree)
+            run(['git', 'apply', HERE / item['patch']], cwd=tree)
+        validate_sources(tree, overlays)
         result.update(sourceCompatible=True, chromiumVersion=lock['chromiumVersion'], fingerprintCommit=commit,
                       upstreamPatches=applied, beforeSha256=before, afterSha256=after,
-                      patchSha256=hashlib.sha256(patch.read_bytes()).hexdigest())
+                      patchSha256=hashlib.sha256(patch.read_bytes()).hexdigest(), overlays=overlays)
     except Exception as error:
         result['error'] = str(error)
         raise

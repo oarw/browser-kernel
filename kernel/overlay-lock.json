@@ -1,0 +1,43 @@
+{
+  "overlays": [
+    {
+      "patch": "patches/0002-fix-blink-component-linkage.patch",
+      "seriesName": "extra/fingerprint/999-fingerbrowser-component-linkage.patch",
+      "files": [
+        {
+          "path": "third_party/blink/common/BUILD.gn",
+          "postUpstreamSha256": "a99021a20b909321196a3656666c8449c05c9bda65621a35b9483b01ec207f4a",
+          "patchedSha256": "dc97181afece1371c660215c9366595f63afea40efefb0a11951785c2c1e2e4b"
+        }
+      ]
+    },
+    {
+      "patch": "patches/0003-local-passwords.patch",
+      "seriesName": "extra/fingerprint/999-fingerbrowser-local-passwords.patch",
+      "files": [
+        {
+          "path": "components/password_manager/core/browser/password_manager.cc",
+          "postUpstreamSha256": "47b0c66c4cf0159e5274e7090c0272399c023075e3e6df665a384185a01aa1f8",
+          "patchedSha256": "8e68dce8fe73a2521ce054d2fa87029591259ac069edf82e023d4e9d849c8dec"
+        },
+        {
+          "path": "components/password_manager/core/browser/password_feature_manager_impl.cc",
+          "postUpstreamSha256": "35d0a50bcb4f5eeb86a56133d80f8500c49b8691c7e955c9236753e98c5037a9",
+          "patchedSha256": "115aa7245c610a3fe5969cacfaa7bc22ab47557947f59ca02a45e671e794228f"
+        }
+      ]
+    },
+    {
+      "patch": "patches/0004-local-password-tests.patch",
+      "seriesName": "extra/fingerprint/999-fingerbrowser-local-password-tests.patch",
+      "files": [
+        {
+          "path": "components/password_manager/core/browser/password_feature_manager_impl_unittest.cc",
+          "postUpstreamSha256": "e1b25e111bfe85e83eb61f14269902d2c5a119f195fdb1e2c3ad72e15c7d60af",
+          "patchedSha256": "f0c0717198b01ca33737d7b6446d1d0b9aa51340dc4bfb05e4856a113bd5c248"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 1
+}

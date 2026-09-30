@@ -94,6 +94,10 @@ jobs:
       - run: python -u kernel/build_windows.py --work-dir D:\fb-kernel --jobs 2 --prepare-only
         if: inputs.source_run == ''
         timeout-minutes: 150
+      - name: Migrate reviewed checkpoint inputs
+        if: inputs.source_run != ''
+        timeout-minutes: 20
+        run: python -u kernel/build_windows.py --work-dir D:\fb-kernel --jobs 2 --prepare-only --migrate-prepared
       - id: budget
         run: python kernel/build_budget.py --started-at "$env:BUILD_STARTED_AT" --output release/budget.json
       - id: compile
@@ -137,7 +141,7 @@ jobs:
           foreach ($path in @('release/budget.json', 'release/preflight.json', 'release/checkpoint/manifest.json', 'release/trusted-source.json', 'release/resume-progress.json', 'release/pch-recovery.json')) {
             if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination release/state }
           }
-          foreach ($name in @('build-state.json', 'build-result.json', 'prepared.json', 'preflight-prepare.json', 'preflight-build.json')) {
+          foreach ($name in @('build-state.json', 'build-result.json', 'prepared.json', 'preflight-prepare.json', 'preflight-build.json', 'migration.json')) {
             $path = Join-Path 'D:\fb-kernel' $name
             if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination release/state }
           }
