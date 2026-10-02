@@ -4,7 +4,7 @@
     "lockSha256": "fcde908750049e7609bd9927ec46cc0fafbc24c88212ce4da89b35f5f945d0a3",
     "patchSha256": "250027c4b29b2eec88d0ab9c1c681c62e61eb45a5adfcba4596278a047f1f145",
     "flagsSha256": "a0eda9a47790271f4380df733f071a79843f6bd57a4202910759a36b9ad8c370",
-    "buildScriptSha256": "76dfcfa0c866b99eae0954bab15c637198fdbf56ee9a57ff2fea9319240cf5a9",
+    "buildScriptSha256": "bdfa6b8dfa6396b7e30de699735c1ed6792b4eb2d61d243c467aeadac5ac99e5",
     "supportScriptSha256": "1a13539ed0a221a7b116e80c63b17899b1f6169d5dfbd2acc747052591c1719a",
     "requirementsSha256": "297afe6ffa8287271ff40ce1053bb3e5041edb9334fd77e88ab869417d6b1128",
     "pythonVersion": "3.12.10",
@@ -15,15 +15,94 @@
       "sdk": "10.0.26100.0",
       "sdkRoot": "C:\\Program Files (x86)\\Windows Kits\\10",
       "longPathsEnabled": true
+    },
+    "overlayLockSha256": "614abc8d25d7540735ca7d050dda2951335a099e1c7c7b5a8ee44e67ee2c30bf",
+    "overlayScriptSha256": "8c249c11253bcff4240c08bd1841a39de5101502fa299c8f3dc23395a9db88ff",
+    "migrationScriptSha256": "a952787561791019e402a7b21bfa41f164838223e5c98a43981559f8fbc75366",
+    "migrationLockSha256": "d66e768c0ce482c67f861a05e3d24b766278dbb170307bd179dd77a7c18e5f77",
+    "overlaySha256": {
+      "patches/0002-fix-blink-component-linkage.patch": "58f112aae2229b3a94108857f3bd10c89c8046003e6fc19a6bca0d31969a5f0e",
+      "patches/0003-local-passwords.patch": "ddf3dec183eee8196b8763a807fafb73ed1b722ccf0892ac61f5dbaf7d29c276",
+      "patches/0004-local-password-tests.patch": "a3c02b8238d91850a9168d74748f8cf84920a514f885f6f85ebd807f08130083"
     }
   },
-  "preparedAt": "2026-09-29T12:51:24.601636+00:00",
+  "preparedAt": "2026-09-30T09:33:11.505687+00:00",
   "sourceSha256": "e993e29b2be81604572d6f02e413c01b6a68311a15b5e70cf31f3c05dce2a600",
   "preparedFiles": {
     "third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc": "e993e29b2be81604572d6f02e413c01b6a68311a15b5e70cf31f3c05dce2a600",
     "out/Default/args.gn": "2473f035d91e8af909a38ce7cb5064d17ddc0b3d46cd79f9324a510d1b4525be",
-    "out/Default/build.ninja": "8ad89e4346952a8d40c964d5297103438d3a2b3c8b8cacd8ac3b1fdb654fbd23",
+    "out/Default/build.ninja": "8446b19bb2ecfb228f98927a021acadddef2607f23687f47cacefd222da61825",
     "out/Default/gn.exe": "93b4dee0bdc7fb1aeb6c49009457f87c29a3f138da26e021c537ebd78673826b",
-    "third_party/rust-toolchain/bin/bindgen.exe": "3dac03243695679c8f174e366112066aa2b44bbda8a17d8f575e15a65ee09cec"
+    "third_party/rust-toolchain/bin/bindgen.exe": "3dac03243695679c8f174e366112066aa2b44bbda8a17d8f575e15a65ee09cec",
+    "third_party/blink/common/BUILD.gn": "dc97181afece1371c660215c9366595f63afea40efefb0a11951785c2c1e2e4b",
+    "components/password_manager/core/browser/password_manager.cc": "edcb44eb5b0b86eb7c310ddf92fb71b419521cf0ec6318b86069f6cd233e61c0",
+    "components/password_manager/core/browser/password_feature_manager_impl.cc": "115aa7245c610a3fe5969cacfaa7bc22ab47557947f59ca02a45e671e794228f",
+    "components/password_manager/core/browser/password_feature_manager_impl_unittest.cc": "3ff624096d55cac110f447484f1bba93db3c97e78514276d1133db32fb2fed12"
+  },
+  "migration": {
+    "schemaVersion": 1,
+    "status": "migrated",
+    "startedAt": "2026-09-30T09:32:04.184309+00:00",
+    "fromInputs": {
+      "lockSha256": "fcde908750049e7609bd9927ec46cc0fafbc24c88212ce4da89b35f5f945d0a3",
+      "patchSha256": "250027c4b29b2eec88d0ab9c1c681c62e61eb45a5adfcba4596278a047f1f145",
+      "flagsSha256": "a0eda9a47790271f4380df733f071a79843f6bd57a4202910759a36b9ad8c370",
+      "buildScriptSha256": "76dfcfa0c866b99eae0954bab15c637198fdbf56ee9a57ff2fea9319240cf5a9",
+      "supportScriptSha256": "1a13539ed0a221a7b116e80c63b17899b1f6169d5dfbd2acc747052591c1719a",
+      "requirementsSha256": "297afe6ffa8287271ff40ce1053bb3e5041edb9334fd77e88ab869417d6b1128",
+      "pythonVersion": "3.12.10",
+      "toolchain": {
+        "visualStudio": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise",
+        "vcvars": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\VC\\Auxiliary\\Build\\vcvars64.bat",
+        "msvc": "14.44.35207",
+        "sdk": "10.0.26100.0",
+        "sdkRoot": "C:\\Program Files (x86)\\Windows Kits\\10",
+        "longPathsEnabled": true
+      }
+    },
+    "toInputs": {
+      "lockSha256": "fcde908750049e7609bd9927ec46cc0fafbc24c88212ce4da89b35f5f945d0a3",
+      "patchSha256": "250027c4b29b2eec88d0ab9c1c681c62e61eb45a5adfcba4596278a047f1f145",
+      "flagsSha256": "a0eda9a47790271f4380df733f071a79843f6bd57a4202910759a36b9ad8c370",
+      "buildScriptSha256": "bdfa6b8dfa6396b7e30de699735c1ed6792b4eb2d61d243c467aeadac5ac99e5",
+      "supportScriptSha256": "1a13539ed0a221a7b116e80c63b17899b1f6169d5dfbd2acc747052591c1719a",
+      "requirementsSha256": "297afe6ffa8287271ff40ce1053bb3e5041edb9334fd77e88ab869417d6b1128",
+      "pythonVersion": "3.12.10",
+      "toolchain": {
+        "visualStudio": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise",
+        "vcvars": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\VC\\Auxiliary\\Build\\vcvars64.bat",
+        "msvc": "14.44.35207",
+        "sdk": "10.0.26100.0",
+        "sdkRoot": "C:\\Program Files (x86)\\Windows Kits\\10",
+        "longPathsEnabled": true
+      },
+      "overlayLockSha256": "614abc8d25d7540735ca7d050dda2951335a099e1c7c7b5a8ee44e67ee2c30bf",
+      "overlayScriptSha256": "8c249c11253bcff4240c08bd1841a39de5101502fa299c8f3dc23395a9db88ff",
+      "migrationScriptSha256": "a952787561791019e402a7b21bfa41f164838223e5c98a43981559f8fbc75366",
+      "migrationLockSha256": "d66e768c0ce482c67f861a05e3d24b766278dbb170307bd179dd77a7c18e5f77",
+      "overlaySha256": {
+        "patches/0002-fix-blink-component-linkage.patch": "58f112aae2229b3a94108857f3bd10c89c8046003e6fc19a6bca0d31969a5f0e",
+        "patches/0003-local-passwords.patch": "ddf3dec183eee8196b8763a807fafb73ed1b722ccf0892ac61f5dbaf7d29c276",
+        "patches/0004-local-password-tests.patch": "a3c02b8238d91850a9168d74748f8cf84920a514f885f6f85ebd807f08130083"
+      }
+    },
+    "browserCompiled": false,
+    "browserAcceptancePassed": false,
+    "sourceBefore": {
+      "third_party/blink/common/BUILD.gn": "a99021a20b909321196a3656666c8449c05c9bda65621a35b9483b01ec207f4a",
+      "components/password_manager/core/browser/password_manager.cc": "7e97f56cf688e21b925988dfa7d986038c27349018de7bf82151c3b363964e52",
+      "components/password_manager/core/browser/password_feature_manager_impl.cc": "35d0a50bcb4f5eeb86a56133d80f8500c49b8691c7e955c9236753e98c5037a9",
+      "components/password_manager/core/browser/password_feature_manager_impl_unittest.cc": "179f67bbf76e52de999701bb03eac4e4af95498a4daebbee3d7f1c30a4329952"
+    },
+    "finishedAt": "2026-09-30T09:33:11.490054+00:00",
+    "commandsPreserved": 55688,
+    "sourceAfter": {
+      "third_party/blink/common/BUILD.gn": "dc97181afece1371c660215c9366595f63afea40efefb0a11951785c2c1e2e4b",
+      "components/password_manager/core/browser/password_manager.cc": "edcb44eb5b0b86eb7c310ddf92fb71b419521cf0ec6318b86069f6cd233e61c0",
+      "components/password_manager/core/browser/password_feature_manager_impl.cc": "115aa7245c610a3fe5969cacfaa7bc22ab47557947f59ca02a45e671e794228f",
+      "components/password_manager/core/browser/password_feature_manager_impl_unittest.cc": "3ff624096d55cac110f447484f1bba93db3c97e78514276d1133db32fb2fed12"
+    },
+    "oldBuildGraphSha256": "8ad89e4346952a8d40c964d5297103438d3a2b3c8b8cacd8ac3b1fdb654fbd23",
+    "newBuildGraphSha256": "8446b19bb2ecfb228f98927a021acadddef2607f23687f47cacefd222da61825"
   }
 }

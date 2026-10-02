@@ -51,11 +51,13 @@ class MigrationTests(unittest.TestCase):
             encoding='utf8', newline='\n')
         self.files = [*self.original['preparedFiles'], 'input.cc']
 
-    def run_migration(self, commands=None, regenerate=None, query='  ungoogled_switches.dll.lib\n'):
+    def run_migration(self, commands=None, regenerate=None,
+                      query='target:\n  input: solink\n    ungoogled_switches.dll.lib\n  outputs:\n'):
         original_run = subprocess.run
         def run(command, **kwargs):
             if str(command[0]).endswith('ninja.exe'):
-                return subprocess.CompletedProcess(command, 0, stdout=query)
+                answer = query.get(command[-1], '') if isinstance(query, dict) else query
+                return subprocess.CompletedProcess(command, 0, stdout=answer)
             return original_run(command, **kwargs)
         def default_regenerate():
             (self.source / 'out/Default/build.ninja').write_text('new graph\n')
@@ -119,6 +121,76 @@ class MigrationTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'missing its direct import library'):
             self.run_migration(query='other.dll.lib\n')
         self.assertEqual(json.loads((self.root / 'prepared.json').read_text()), self.original)
+
+    def test_every_blink_dll_requires_its_own_import_library(self):
+        valid = 'target:\n  input: solink\n    ungoogled_switches.dll.lib\n  outputs:\n'
+        for missing in ('blink_common.dll', 'blink_core.dll', 'blink_modules.dll'):
+            with self.subTest(target=missing):
+                queries = {target: valid for target in ('blink_common.dll', 'blink_core.dll', 'blink_modules.dll')}
+                # An output reference must not masquerade as a link input.
+                queries[missing] = 'target:\n  input: solink\n    other.lib\n  outputs:\n    ungoogled_switches.dll.lib\n'
+                with self.assertRaisesRegex(RuntimeError, missing):
+                    self.run_migration(query=queries)
+                self.assertEqual(json.loads((self.root / 'prepared.json').read_text()), self.original)
+                (self.source / 'input.cc').write_text('old source\n', encoding='utf8', newline='\n')
+                (self.source / 'out/Default/build.ninja').write_text('old graph\n', encoding='utf8', newline='\n')
+
+    def test_ninja_implicit_link_inputs_are_accepted(self):
+        self.run_migration(query='target:\n  input: solink\n    | ungoogled_switches.dll.lib\n  outputs:\n')
+
+    def install_previous_overlay(self):
+        path = self.source / 'previous.cc'
+        path.write_text('previous fix\n', encoding='utf8', newline='\n')
+        patch_path = self.repository / 'previous.patch'
+        patch_path.write_text('not a patch: must never be applied again\n', encoding='utf8', newline='\n')
+        previous = {'patch': 'previous.patch', 'seriesName': 'extra/previous.patch', 'files': [{
+            'path': 'previous.cc', 'preparedBeforeSha256': 'unpatched-source',
+            'preparedSha256': source_digest(path)}]}
+        self.overlays.insert(0, previous)
+        self.original['inputs']['overlaySha256'] = {'previous.patch': digest(patch_path)}
+        self.original['inputs']['overlayLockSha256'] = 'old-overlay-lock'
+        self.original['preparedFiles']['previous.cc'] = digest(path)
+        self.identity['overlaySha256'] = {**self.original['inputs']['overlaySha256'],
+                                         'fix.patch': digest(self.repository / 'fix.patch')}
+        self.identity['overlayLockSha256'] = 'new-overlay-lock'
+        self.files.append('previous.cc')
+        write_json(self.root / 'prepared.json', self.original)
+        write_json(self.repository / 'migration-lock.json', self.original)
+
+    def test_append_to_existing_overlay_checkpoint_without_reapplying_old_patch(self):
+        self.install_previous_overlay()
+        self.run_migration()
+        marker = json.loads((self.root / 'prepared.json').read_text())
+        self.assertEqual(marker['migration']['appliedOverlays'], ['fix.patch'])
+        self.assertEqual((self.source / 'previous.cc').read_text(), 'previous fix\n')
+        with patch.object(migration, 'HERE', self.repository):
+            self.assertEqual(migration.reviewed_overlay_series(self.overlays), 'extra/previous.patch\n')
+
+    def test_existing_overlay_patch_and_identity_cannot_change(self):
+        self.install_previous_overlay()
+        original = (self.repository / 'previous.patch').read_bytes()
+        (self.repository / 'previous.patch').write_text('changed')
+        with self.assertRaisesRegex(RuntimeError, 'Previously applied overlay changed'):
+            self.run_migration()
+        (self.repository / 'previous.patch').write_bytes(original)
+        self.identity['overlaySha256']['previous.patch'] = 'changed'
+        with self.assertRaisesRegex(RuntimeError, 'existing overlay identity'):
+            self.run_migration()
+        self.assertEqual((self.source / 'input.cc').read_text(), 'old source\n')
+
+    def test_unknown_or_reordered_overlay_prefix_is_rejected(self):
+        self.install_previous_overlay()
+        self.overlays.reverse()
+        with self.assertRaisesRegex(RuntimeError, 'reviewed patch prefix'):
+            self.run_migration()
+        self.assertEqual((self.source / 'input.cc').read_text(), 'old source\n')
+
+    def test_tampered_previously_patched_source_is_rejected(self):
+        self.install_previous_overlay()
+        (self.source / 'previous.cc').write_text('unreviewed modification\n')
+        with self.assertRaises(RuntimeError):
+            self.run_migration()
+        self.assertEqual((self.source / 'input.cc').read_text(), 'old source\n')
 
     def test_regeneration_cannot_change_gn_options(self):
         def alter_flags():
