@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 import shutil
@@ -28,15 +29,107 @@ class PchRecoveryTests(unittest.TestCase):
         (self.root / 'prepared.json').write_text('{}')
         self.report = self.root / 'pch-recovery.json'
 
-    def make_producer(self, name):
-        producer = self.output / name / 'precompile.cc.obj'
+    def make_producer(self, name, source='build/precompile.cc', header='build/precompile.h'):
+        source_path = self.source / source
+        source_path.parent.mkdir(parents=True, exist_ok=True)
+        source_path.write_text('// fixture PCH source\n')
+        producer = self.output / name / (source_path.name + '.obj')
         producer.parent.mkdir(exist_ok=True)
         producer.write_bytes(b'PCH producer')
         (self.output / (name + '.ninja')).write_text(
-            f'cflags_cc = /Fp{name}_cc.pch /Yubuild/precompile.h\n'
-            f'build {name}/precompile.cc.obj: cxx ../../build/precompile.cc\n'
-            '  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n')
+            f'cflags_cc = /Fp{name}_cc.pch /Yu{header}\n'
+            f'build {name}/{source_path.name}.obj: cxx ../../{source}\n'
+            f'  cflags_cc = ${{cflags_cc}} /Yc{header}\n')
         return producer
+
+    def test_blink_platform_and_core_producers_are_rebuilt_from_their_gn_edges(self):
+        producers = []
+        for variant in ('platform', 'core'):
+            pch = self.output / (variant + '_cc.pch')
+            pch.write_bytes(b'stale PCH')
+            producer = self.make_producer(variant,
+                f'third_party/blink/renderer/{variant}/win/precompile_{variant}.cc',
+                f'../../third_party/blink/renderer/{variant}/precompile_{variant}.h')
+            producers.append(producer)
+        unrelated = self.output / 'keep.obj'
+        unrelated.write_bytes(b'completed object')
+        with patch.object(pch_recovery, 'validate_pch', return_value='mtime failure'):
+            result = pch_recovery.recover(self.root, self.report)
+        self.assertEqual(result['status'], 'ready')
+        self.assertEqual(len(result['inventory']), 2)
+        self.assertEqual(len(result['invalidated']), 2)
+        self.assertTrue(all(not producer.exists() for producer in producers))
+        self.assertFalse((self.output / 'platform_cc.pch').exists())
+        self.assertFalse((self.output / 'core_cc.pch').exists())
+        self.assertEqual(unrelated.read_bytes(), b'completed object')
+
+    def test_recorded_chromium_148_checkpoint_pch_inventory(self):
+        fixture = json.loads((Path(__file__).parent / 'fixtures/pch-producers-148.json').read_text(encoding='utf8'))
+        self.assertEqual(len(fixture['cases']), 37)
+        expected = []
+        for item in fixture['cases']:
+            pch, ninja, producer = (self.output / item[name] for name in ('pch', 'ninja', 'producer'))
+            source = self.output / item['source']
+            for path in (pch, ninja, producer, source):
+                path.parent.mkdir(parents=True, exist_ok=True)
+            pch.write_bytes(b'PCH')
+            producer.write_bytes(b'completed producer')
+            source.write_text('// fixture source\n')
+            ninja.write_text(item['definition'], encoding='utf8')
+            expected.append({'path': pch.relative_to(self.root).as_posix(),
+                             'producer': producer.relative_to(self.root).as_posix()})
+        with patch.object(pch_recovery, 'validate_pch', return_value=None) as validate:
+            result = pch_recovery.recover(self.root, self.report)
+        self.assertEqual(validate.call_count, 37)
+        self.assertEqual(result['inventory'], expected)
+        self.assertEqual(len(result['validated']), 37)
+        self.assertEqual(result['invalidated'], [])
+        for item in fixture['cases']:
+            self.assertTrue((self.output / item['pch']).exists())
+            self.assertEqual((self.output / item['producer']).read_bytes(), b'completed producer')
+
+    def test_all_producer_errors_are_reported_before_validation_or_removal(self):
+        pchs = [self.output / (name + '_cc.pch') for name in ('a', 'b', 'good')]
+        for pch in pchs:
+            pch.write_bytes(b'PCH')
+        self.make_producer('good')
+        with patch.object(pch_recovery, 'validate_pch') as validate, \
+                self.assertRaisesRegex(RuntimeError, '2 file'):
+            pch_recovery.recover(self.root, self.report)
+        validate.assert_not_called()
+        result = json.loads(self.report.read_text())
+        self.assertEqual(len(result['producerErrors']), 2)
+        self.assertEqual(len(result['inventory']), 1)
+        self.assertTrue(all(pch.exists() for pch in pchs))
+        self.assertTrue((self.output / 'good/precompile.cc.obj').exists())
+
+    def test_ambiguous_creation_edges_and_overridden_pch_path_are_rejected(self):
+        pch = self.output / 'target_cc.pch'
+        pch.write_bytes(b'PCH')
+        producer = self.make_producer('target')
+        ninja = self.output / 'target.ninja'
+        original = ninja.read_text()
+        edge = original[original.index('build '):]
+        for definition in (original + edge,
+                           original.replace('${cflags_cc} /Yc', '${cflags_cc} /Fpother.pch /Yc')):
+            with self.subTest(definition=definition):
+                ninja.write_text(definition)
+                with self.assertRaisesRegex(RuntimeError, 'expected GN producer'):
+                    pch_recovery.pch_producer(pch, self.output)
+                self.assertTrue(producer.exists())
+                self.assertTrue(pch.exists())
+
+    def test_gn_creation_edge_cannot_select_an_unrelated_object(self):
+        pch = self.output / 'target_cc.pch'
+        pch.write_bytes(b'PCH')
+        self.make_producer('target')
+        unrelated = self.output / 'unrelated.obj'
+        unrelated.write_bytes(b'keep')
+        ninja = self.output / 'target.ninja'
+        ninja.write_text(ninja.read_text().replace('target/precompile.cc.obj', 'unrelated.obj'))
+        with self.assertRaisesRegex(RuntimeError, 'unsafe PCH producer'):
+            pch_recovery.pch_producer(pch, self.output)
+        self.assertEqual(unrelated.read_bytes(), b'keep')
 
     @unittest.skipUnless(CLANG, 'clang not installed')
     def test_real_clang_mtime_failure_is_rebuilt_without_removing_objects_or_valid_pch(self):
@@ -94,11 +187,13 @@ class PchRecoveryTests(unittest.TestCase):
         pch.write_bytes(b'PCH')
         producer = self.make_producer('target')
         definition = self.output / 'target.ninja'
-        definition.write_text(definition.read_text().replace('/Ycbuild/precompile.h', '/Ycother.h'))
+        original = definition.read_text()
+        definition.write_text(original.replace('/Ycbuild/precompile.h', '/Ycother.h'))
         with patch.object(pch_recovery, 'validate_pch', return_value='mtime failure'), self.assertRaisesRegex(RuntimeError, 'expected GN producer'):
             pch_recovery.recover(self.root, self.report)
         self.assertTrue(pch.exists())
         self.assertTrue(producer.exists())
+        definition.write_text(original)
         producer.unlink()
         outside = self.root / 'outside.obj'
         outside.write_bytes(b'keep')

@@ -45,22 +45,52 @@ def validate_pch(compiler, path, output):
 def pch_producer(path, output):
     # GN emits the PCH as a side effect of this object, not as a Ninja output.
     # Removing only the .pch would leave its producer considered up to date.
+    output = output.resolve()
+    path = path.absolute()
     if not path.name.endswith('_cc.pch'):
         raise RuntimeError('Unsupported PCH producer naming')
     target = path.name.removesuffix('_cc.pch')
-    producer = path.parent / target / 'precompile.cc.obj'
     build_file = path.parent / (target + '.ninja')
-    for candidate in (producer, build_file):
-        if candidate.is_symlink() or not candidate.is_file() or not candidate.resolve().is_relative_to(output.resolve()):
-            raise RuntimeError('Missing or unsafe PCH producer evidence')
-    definition = build_file.read_text(encoding='utf8')
-    relative = producer.relative_to(output).as_posix()
-    rule = re.search(r'^build ' + re.escape(relative)
-                     + r': cxx ../../build/precompile\.cc[^\n]*\n((?:[ \t]+[^\n]*\n)*)', definition, re.MULTILINE)
-    if (not rule or '/Ycbuild/precompile.h' not in rule.group(1)
-            or '/Fp' + path.relative_to(output).as_posix() + ' ' not in definition):
-        raise RuntimeError('PCH is not paired with the expected GN producer')
-    return producer
+    if (build_file.is_symlink() or not build_file.is_file()
+            or not build_file.resolve().is_relative_to(output)):
+        raise RuntimeError(f'Missing or unsafe PCH producer evidence: {build_file}')
+    # Blink has its own precompile_platform.cc and precompile_core.cc. Derive
+    # the producer from GN's creation edge instead of guessing its filename.
+    definition = build_file.read_text(encoding='utf8').replace('$\n', '')
+    flags = re.findall(r'^cflags_cc = (.*)$', definition, re.MULTILINE)
+    relative_pch = path.relative_to(output).as_posix()
+    if len(flags) != 1 or [flag for flag in flags[0].split() if flag.startswith('/Fp')] != ['/Fp' + relative_pch]:
+        raise RuntimeError('PCH is not paired with the expected GN producer: /Fp mismatch')
+    headers = [flag[3:] for flag in flags[0].split() if flag.startswith('/Yu')]
+    if len(headers) != 1 or not headers[0]:
+        raise RuntimeError('PCH is not paired with the expected GN producer: /Yu mismatch')
+    candidates = []
+    for rule in re.finditer(r'^build (\S+): cxx (\S+)[^\n]*\n((?:[ \t]+[^\n]*\n)*)',
+                            definition, re.MULTILINE):
+        edge_flags = re.findall(r'^\s+cflags_cc = (.*)$', rule.group(3), re.MULTILINE)
+        if not any(any(flag.startswith('/Yc') for flag in line.split()) for line in edge_flags):
+            continue
+        if len(edge_flags) != 1 or edge_flags[0].split() != ['${cflags_cc}', '/Yc' + headers[0]]:
+            raise RuntimeError('PCH is not paired with the expected GN producer: /Yc mismatch')
+        relative, source = rule.group(1, 2)
+        if '\\' in relative or ':' in relative or '\\' in source or ':' in source:
+            raise RuntimeError('Missing or unsafe PCH producer evidence: unsupported edge path')
+        producer = output / relative
+        source_path = output / source
+        if (producer.parent != path.parent / target
+                or producer.name != source_path.name + '.obj'
+                or not re.fullmatch(r'precompile(?:_[a-z]+)?\.cc', source_path.name)
+                or not source.startswith('../../')
+                or not source_path.resolve().is_relative_to(output.parent.parent)
+                or source_path.is_symlink() or not source_path.is_file()):
+            raise RuntimeError('Missing or unsafe PCH producer evidence: unexpected source/output edge')
+        if (producer.is_symlink() or not producer.is_file()
+                or not producer.resolve().is_relative_to(output)):
+            raise RuntimeError(f'Missing or unsafe PCH producer evidence: {producer}')
+        candidates.append(producer)
+    if len(candidates) != 1:
+        raise RuntimeError('PCH is not paired with the expected GN producer: expected one creation edge')
+    return candidates[0]
 
 
 def recover(root, report_path):
@@ -72,17 +102,33 @@ def recover(root, report_path):
             or not output.resolve().is_relative_to(root) or not compiler.resolve().is_relative_to(root)):
         raise RuntimeError('Expected a restored prepared workspace and its bundled compiler')
     report = {'schemaVersion': 1, 'startedAt': now(), 'status': 'validating',
-              'validated': [], 'invalidated': [], 'browserCompiled': False}
+              'inventory': [], 'producerErrors': [], 'validated': [], 'invalidated': [], 'browserCompiled': False}
     with workspace_lock(root):
         try:
             invalid = []
+            pairs = []
+            # Check all producers, including valid PCHs, before Clang validation
+            # or removal. Report all unsupported shapes in one bounded run.
             for path in pch_files(output):
+                relative = path.relative_to(root).as_posix()
+                try:
+                    producer = pch_producer(path, output)
+                except RuntimeError as error:
+                    report['producerErrors'].append({'path': relative, 'error': str(error)})
+                    continue
+                report['inventory'].append({'path': relative, 'producer': producer.relative_to(root).as_posix()})
+                pairs.append((path, producer))
+            write_json(report_path, report)
+            if report['producerErrors']:
+                raise RuntimeError(f"PCH producer audit failed for {len(report['producerErrors'])} file(s): "
+                                   + report['producerErrors'][0]['error'])
+            for path, producer in pairs:
+                report['checking'] = path.relative_to(root).as_posix()
                 diagnostic = validate_pch(compiler, path, output)
                 relative = path.relative_to(root).as_posix()
                 if diagnostic is None:
                     report['validated'].append(relative)
                 else:
-                    producer = pch_producer(path, output)
                     invalid.append((path, producer, {'path': relative, 'producer': producer.relative_to(root).as_posix(),
                                                     'reason': 'input-mtime-changed', 'diagnostic': diagnostic}))
             report['status'] = 'invalidating'
@@ -94,6 +140,7 @@ def recover(root, report_path):
                     candidate.unlink()
                 report['invalidated'].append(evidence)
                 write_json(report_path, report)
+            report.pop('checking', None)
             report.update(status='ready', finishedAt=now())
             write_json(report_path, report)
         except BaseException as error:
