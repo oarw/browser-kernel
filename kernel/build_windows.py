@@ -15,7 +15,7 @@ import subprocess
 import sys
 from build_support import digest, now, preflight, run_windows_process, validate_prepared, validate_work_dir, workspace_lock, write_json
 from source_overlays import install_overlays, load_overlays, overlay_identity, targets, validate_sources
-from migrate_prepared import migrate
+from migrate_prepared import migrate, reviewed_overlay_series
 
 HERE = Path(__file__).resolve().parent
 LOCK = json.loads((HERE / 'source-lock.json').read_text(encoding='utf8'))
@@ -124,6 +124,7 @@ def build(args, root):
         expected_series = legacy_series + ''.join(item['seriesName'] + '\n' for item in OVERLAYS)
         allowed_series = [original_series, expected_series]
         if getattr(args, 'migrate_prepared', False):
+            legacy_series += reviewed_overlay_series(OVERLAYS)
             allowed_series.append(legacy_series)
         if series_path.read_text(encoding='utf8') not in allowed_series:
             raise RuntimeError('Refusing to overwrite unrelated upstream patch series changes')

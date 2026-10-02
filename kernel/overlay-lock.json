@@ -45,6 +45,33 @@
           "preparedSha256": "3ff624096d55cac110f447484f1bba93db3c97e78514276d1133db32fb2fed12"
         }
       ]
+    },
+    {
+      "patch": "patches/0005-fix-blink-renderer-component-linkage.patch",
+      "seriesName": "extra/fingerprint/999-fingerbrowser-renderer-component-linkage.patch",
+      "files": [
+        {
+          "path": "third_party/blink/renderer/core/BUILD.gn",
+          "postUpstreamSha256": "e26f0bd9252aa7226f4fafcc6a19e585ac8870672a4597e7a521e59644446862",
+          "patchedSha256": "e43fc5409cdfa2355b684a1a6bc4db68b6a1915087861a753421d16e34cac60b",
+          "preparedBeforeSha256": "f5f1e136793f9777af28f3f285bb2d2e8d4fa49ec76434ba4586320e371e4e0b",
+          "preparedSha256": "13986c82478a2608449f66f8e1a8eec4fc7c1aa81b637f210ae7f0b509828890"
+        },
+        {
+          "path": "third_party/blink/renderer/modules/BUILD.gn",
+          "postUpstreamSha256": "6969453c28f8a3a3b7a6db5ba1f8b1285e92260c57fba239f01f2e9b9180695a",
+          "patchedSha256": "e46d46529a8a1bd8d651a76bd540954e3370cf7c036b50a7f5a58fd95bc41762",
+          "preparedBeforeSha256": "6969453c28f8a3a3b7a6db5ba1f8b1285e92260c57fba239f01f2e9b9180695a",
+          "preparedSha256": "e46d46529a8a1bd8d651a76bd540954e3370cf7c036b50a7f5a58fd95bc41762"
+        },
+        {
+          "path": "third_party/blink/public/common/user_agent/user_agent_metadata.h",
+          "postUpstreamSha256": "65b0ae23976f1dc5eea59a8b6e4dd51b95533866c06591eb3a62bc767ea1bc91",
+          "patchedSha256": "9a2d89bda324a72a646acb812f9a57bd9d407530f24c977def06249dcd077d06",
+          "preparedBeforeSha256": "65b0ae23976f1dc5eea59a8b6e4dd51b95533866c06591eb3a62bc767ea1bc91",
+          "preparedSha256": "9a2d89bda324a72a646acb812f9a57bd9d407530f24c977def06249dcd077d06"
+        }
+      ]
     }
   ],
   "schemaVersion": 1

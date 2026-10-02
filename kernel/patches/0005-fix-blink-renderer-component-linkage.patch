@@ -1,0 +1,35 @@
+--- a/third_party/blink/renderer/core/BUILD.gn
++++ b/third_party/blink/renderer/core/BUILD.gn
+@@ -412,6 +412,7 @@
+     "//components/performance_manager/public/mojom:mojom_blink",
+     "//components/shared_highlighting/core/common",
+     "//components/subresource_filter/core/common",
++    "//components/ungoogled:ungoogled_switches",
+     "//components/web_package",
+     "//gin",
+     "//gpu/config",
+--- a/third_party/blink/renderer/modules/BUILD.gn
++++ b/third_party/blink/renderer/modules/BUILD.gn
+@@ -199,6 +199,7 @@
+     ":make_modules_generated",
+     "//build:android_buildflags",
+     "//cc",
++    "//components/ungoogled:ungoogled_switches",
+     "//components/webrtc:thread_wrapper",
+     "//gin",
+     "//net",
+--- a/third_party/blink/public/common/user_agent/user_agent_metadata.h
++++ b/third_party/blink/public/common/user_agent/user_agent_metadata.h
+@@ -107,9 +107,10 @@
+                                     const UserAgentOverride& b);
+ 
+ 
+-void UpdateUserAgentMetadataFingerprint(UserAgentMetadata* metadata);
++BLINK_COMMON_EXPORT void UpdateUserAgentMetadataFingerprint(
++    UserAgentMetadata* metadata);
+ 
+-std::string GetUserAgentFingerprintBrandInfo();
++BLINK_COMMON_EXPORT std::string GetUserAgentFingerprintBrandInfo();
+ }  // namespace blink
+ 
+ #endif  // THIRD_PARTY_BLINK_PUBLIC_COMMON_USER_AGENT_USER_AGENT_METADATA_H_
