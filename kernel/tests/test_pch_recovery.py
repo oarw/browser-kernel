@@ -162,11 +162,13 @@ class PchRecoveryTests(unittest.TestCase):
         pch.write_bytes(b'PCH')
         producer = self.make_producer('target')
         definition = self.output / 'target.ninja'
-        definition.write_text(definition.read_text().replace('/Ycbuild/precompile.h', '/Ycother.h'))
+        original = definition.read_text()
+        definition.write_text(original.replace('/Ycbuild/precompile.h', '/Ycother.h'))
         with patch.object(pch_recovery, 'validate_pch', return_value='mtime failure'), self.assertRaisesRegex(RuntimeError, 'expected GN producer'):
             pch_recovery.recover(self.root, self.report)
         self.assertTrue(pch.exists())
         self.assertTrue(producer.exists())
+        definition.write_text(original)
         producer.unlink()
         outside = self.root / 'outside.obj'
         outside.write_bytes(b'keep')
