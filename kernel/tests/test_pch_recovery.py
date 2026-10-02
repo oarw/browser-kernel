@@ -63,6 +63,31 @@ class PchRecoveryTests(unittest.TestCase):
         self.assertFalse((self.output / 'core_cc.pch').exists())
         self.assertEqual(unrelated.read_bytes(), b'completed object')
 
+    def test_recorded_chromium_148_checkpoint_pch_inventory(self):
+        fixture = json.loads((Path(__file__).parent / 'fixtures/pch-producers-148.json').read_text(encoding='utf8'))
+        self.assertEqual(len(fixture['cases']), 37)
+        expected = []
+        for item in fixture['cases']:
+            pch, ninja, producer = (self.output / item[name] for name in ('pch', 'ninja', 'producer'))
+            source = self.output / item['source']
+            for path in (pch, ninja, producer, source):
+                path.parent.mkdir(parents=True, exist_ok=True)
+            pch.write_bytes(b'PCH')
+            producer.write_bytes(b'completed producer')
+            source.write_text('// fixture source\n')
+            ninja.write_text(item['definition'], encoding='utf8')
+            expected.append({'path': pch.relative_to(self.root).as_posix(),
+                             'producer': producer.relative_to(self.root).as_posix()})
+        with patch.object(pch_recovery, 'validate_pch', return_value=None) as validate:
+            result = pch_recovery.recover(self.root, self.report)
+        self.assertEqual(validate.call_count, 37)
+        self.assertEqual(result['inventory'], expected)
+        self.assertEqual(len(result['validated']), 37)
+        self.assertEqual(result['invalidated'], [])
+        for item in fixture['cases']:
+            self.assertTrue((self.output / item['pch']).exists())
+            self.assertEqual((self.output / item['producer']).read_bytes(), b'completed producer')
+
     def test_all_producer_errors_are_reported_before_validation_or_removal(self):
         pchs = [self.output / (name + '_cc.pch') for name in ('a', 'b', 'good')]
         for pch in pchs:

@@ -1,0 +1,266 @@
+{
+  "sourceArtifact": 11103979095,
+  "sourceCommit": "40eed79325636c78a451c6b93f18f2faf650604e",
+  "chromiumVersion": "148.0.7778.215",
+  "cases": [
+    {
+      "pch": "obj/base/base_cc.pch",
+      "ninja": "obj/base/base.ninja",
+      "producer": "obj/base/base/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/base/base_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/base/base/precompile.cc.obj: cxx ../../build/precompile.cc | phony/base/base.inputs || phony/base/base.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/cc/animation/animation_cc.pch",
+      "ninja": "obj/cc/animation/animation.ninja",
+      "producer": "obj/cc/animation/animation/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/cc/animation/animation_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/cc/animation/animation/precompile.cc.obj: cxx ../../build/precompile.cc | phony/cc/animation/animation.inputs || phony/cc/animation/animation.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/cc/base/base_cc.pch",
+      "ninja": "obj/cc/base/base.ninja",
+      "producer": "obj/cc/base/base/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/cc/base/base_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/cc/base/base/precompile.cc.obj: cxx ../../build/precompile.cc | phony/cc/base/base.inputs || phony/cc/base/base.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/cc/cc_cc.pch",
+      "ninja": "obj/cc/cc.ninja",
+      "producer": "obj/cc/cc/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/cc/cc_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/cc/cc/precompile.cc.obj: cxx ../../build/precompile.cc | phony/cc/cc.inputs || phony/cc/cc.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/cc/debug/debug_cc.pch",
+      "ninja": "obj/cc/debug/debug.ninja",
+      "producer": "obj/cc/debug/debug/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/cc/debug/debug_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/cc/debug/debug/precompile.cc.obj: cxx ../../build/precompile.cc | phony/cc/debug/debug.inputs || phony/cc/debug/debug.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/cc/ipc/ipc_cc.pch",
+      "ninja": "obj/cc/ipc/ipc.ninja",
+      "producer": "obj/cc/ipc/ipc/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/cc/ipc/ipc_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/cc/ipc/ipc/precompile.cc.obj: cxx ../../build/precompile.cc | phony/cc/ipc/ipc.inputs || phony/cc/ipc/ipc.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/cc/layer_selection_bound_cc.pch",
+      "ninja": "obj/cc/layer_selection_bound.ninja",
+      "producer": "obj/cc/layer_selection_bound/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/cc/layer_selection_bound_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/cc/layer_selection_bound/precompile.cc.obj: cxx ../../build/precompile.cc | phony/cc/layer_selection_bound.inputs || phony/cc/layer_selection_bound.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/cc/mojo_embedder/mojo_embedder_cc.pch",
+      "ninja": "obj/cc/mojo_embedder/mojo_embedder.ninja",
+      "producer": "obj/cc/mojo_embedder/mojo_embedder/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/cc/mojo_embedder/mojo_embedder_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/cc/mojo_embedder/mojo_embedder/precompile.cc.obj: cxx ../../build/precompile.cc | phony/cc/mojo_embedder/mojo_embedder.inputs || phony/cc/mojo_embedder/mojo_embedder.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/cc/paint/paint_cc.pch",
+      "ninja": "obj/cc/paint/paint.ninja",
+      "producer": "obj/cc/paint/paint/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/cc/paint/paint_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/cc/paint/paint/precompile.cc.obj: cxx ../../build/precompile.cc | phony/cc/paint/paint.inputs || phony/cc/paint/paint.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/components/policy/core/common/internal_cc.pch",
+      "ninja": "obj/components/policy/core/common/internal.ninja",
+      "producer": "obj/components/policy/core/common/internal/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/components/policy/core/common/internal_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/components/policy/core/common/internal/precompile.cc.obj: cxx ../../build/precompile.cc | phony/components/policy/core/common/internal.inputs || phony/components/policy/core/common/internal.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/components/sync/engine/engine_cc.pch",
+      "ninja": "obj/components/sync/engine/engine.ninja",
+      "producer": "obj/components/sync/engine/engine/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/components/sync/engine/engine_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/components/sync/engine/engine/precompile.cc.obj: cxx ../../build/precompile.cc | phony/components/sync/engine/engine.inputs || phony/components/sync/engine/engine.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/components/sync_device_info/sync_device_info_cc.pch",
+      "ninja": "obj/components/sync_device_info/sync_device_info.ninja",
+      "producer": "obj/components/sync_device_info/sync_device_info/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/components/sync_device_info/sync_device_info_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/components/sync_device_info/sync_device_info/precompile.cc.obj: cxx ../../build/precompile.cc | phony/components/sync_device_info/sync_device_info.inputs || phony/components/sync_device_info/sync_device_info.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/components/viz/client/client_cc.pch",
+      "ninja": "obj/components/viz/client/client.ninja",
+      "producer": "obj/components/viz/client/client/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/components/viz/client/client_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/components/viz/client/client/precompile.cc.obj: cxx ../../build/precompile.cc | phony/components/viz/client/client.inputs || phony/components/viz/client/client.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/components/viz/common/common_cc.pch",
+      "ninja": "obj/components/viz/common/common.ninja",
+      "producer": "obj/components/viz/common/common/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/components/viz/common/common_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/components/viz/common/common/precompile.cc.obj: cxx ../../build/precompile.cc | phony/components/viz/common/common.inputs || phony/components/viz/common/common.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/components/viz/common/resources/shared_image_format_cc.pch",
+      "ninja": "obj/components/viz/common/resources/shared_image_format.ninja",
+      "producer": "obj/components/viz/common/resources/shared_image_format/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/components/viz/common/resources/shared_image_format_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/components/viz/common/resources/shared_image_format/precompile.cc.obj: cxx ../../build/precompile.cc | phony/components/viz/common/resources/shared_image_format.inputs || phony/components/viz/common/resources/shared_image_format.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/components/viz/host/host_cc.pch",
+      "ninja": "obj/components/viz/host/host.ninja",
+      "producer": "obj/components/viz/host/host/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/components/viz/host/host_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/components/viz/host/host/precompile.cc.obj: cxx ../../build/precompile.cc | phony/components/viz/host/host.inputs || phony/components/viz/host/host.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/gpu/command_buffer/service/gles2_sources_cc.pch",
+      "ninja": "obj/gpu/command_buffer/service/gles2_sources.ninja",
+      "producer": "obj/gpu/command_buffer/service/gles2_sources/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/gpu/command_buffer/service/gles2_sources_cc.pch /Yubuild/precompile.h -Wno-thread-safety -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/gpu/command_buffer/service/gles2_sources/precompile.cc.obj: cxx ../../build/precompile.cc | phony/gpu/command_buffer/service/gles2_sources.inputs || phony/gpu/command_buffer/service/gles2_sources.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\nbuild obj/gpu/command_buffer/service/gles2_sources/graphite_precompile.obj: cxx ../../gpu/command_buffer/service/graphite_precompile.cc | phony/gpu/command_buffer/service/gles2_sources.inputs obj/gpu/command_buffer/service/gles2_sources/precompile.cc.obj || phony/gpu/command_buffer/service/gles2_sources.inputdeps\n"
+    },
+    {
+      "pch": "obj/gpu/command_buffer/service/service_sources_cc.pch",
+      "ninja": "obj/gpu/command_buffer/service/service_sources.ninja",
+      "producer": "obj/gpu/command_buffer/service/service_sources/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/gpu/command_buffer/service/service_sources_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/gpu/command_buffer/service/service_sources/precompile.cc.obj: cxx ../../build/precompile.cc | phony/gpu/command_buffer/service/service_sources.inputs || phony/gpu/command_buffer/service/service_sources.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/media/base/base_cc.pch",
+      "ninja": "obj/media/base/base.ninja",
+      "producer": "obj/media/base/base/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/media/base/base_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/media/base/base/precompile.cc.obj: cxx ../../build/precompile.cc | phony/media/base/base.inputs || phony/media/base/base.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/net/dns/dns_cc.pch",
+      "ninja": "obj/net/dns/dns.ninja",
+      "producer": "obj/net/dns/dns/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/net/dns/dns_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/net/dns/dns/precompile.cc.obj: cxx ../../build/precompile.cc | phony/net/dns/dns.inputs || phony/net/dns/dns.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/net/dns/public/public_cc.pch",
+      "ninja": "obj/net/dns/public/public.ninja",
+      "producer": "obj/net/dns/public/public/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/net/dns/public/public_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/net/dns/public/public/precompile.cc.obj: cxx ../../build/precompile.cc | phony/net/dns/public/public.inputs || phony/net/dns/public/public.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/net/http/transport_security_state_generated_files_cc.pch",
+      "ninja": "obj/net/http/transport_security_state_generated_files.ninja",
+      "producer": "obj/net/http/transport_security_state_generated_files/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/net/http/transport_security_state_generated_files_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/net/http/transport_security_state_generated_files/precompile.cc.obj: cxx ../../build/precompile.cc | ../../build/config/unsafe_buffers_paths.txt ../../build/config/warning_suppression.txt || phony/base/anchor_functions_buildflags phony/base/build_date_header phony/base/cfi_buildflags phony/base/check_version_internal_action phony/base/clang_profiling_buildflags phony/base/debugging_buildflags phony/base/feature_buildflags phony/base/fuzzing_buildflags phony/base/i18n_transliterator phony/base/ios_cronet_buildflags phony/base/memory_dump_provider_name_variants phony/base/orderfile_buildflags phony/base/power_monitor_buildflags phony/base/profiler_buildflags phony/base/protected_memory_buildflags phony/base/sanitizer_buildflags phony/base/synchronization_buildflags phony/base/tracing_buildflags phony/base/allocator/buildflags phony/base/allocator/partition_allocator/src/partition_alloc/buildflags phony/base/logging/log_severity_bindgen_generator phony/base/logging/rust_logger_cxx_generated_gen phony/base/tracing/protos/chrome_track_event_gen phony/base/tracing/protos/chrome_track_event_zero_gen phony/base/win/base_win_buildflags phony/build/android_buildflags phony/build/blink_buildflags phony/build/branding_buildflags phony/build/chromecast_buildflags phony/build/chromeos_buildflags phony/build/ios_buildflags phony/build/robolectric_buildflags phony/build/config/compiler/compiler_buildflags phony/build/config/win/set_appcontainer_acls phony/build/rust/allocator/alloc_error_handler_impl_ffi_generator win_clang_x64_for_rust_host_build_tools/phony/build/rust/allocator/alloc_error_handler_impl_ffi_generator phony/build/rust/std/prebuilt_rustc_copy_to_sysroot win_clang_x64_for_rust_host_build_tools/phony/build/rust/std/prebuilt_rustc_copy_to_sysroot phony/crypto/buildflags phony/net/buildflags phony/net/cronet_buildflags phony/net/disk_cache_buildflags phony/net/isolation_info_proto_gen phony/net/net_nqe_proto_gen phony/net/net_resources_grit phony/net/base/registry_controlled_domains/generate_effective_tld_names_reversed_dafsa phony/net/cert/root_store_proto_lite_gen phony/net/http/generate_transport_security_state phony/net/third_party/quiche/net_quic_proto_gen phony/net/third_party/quiche/net_quic_test_tools_proto_gen phony/third_party/icu/copy_icudata phony/third_party/perfetto/gn/gen_buildflags phony/third_party/perfetto/protos/perfetto/common/cpp_gen phony/third_party/perfetto/protos/perfetto/common/semantic_type_cpp_gen phony/third_party/perfetto/protos/perfetto/common/semantic_type_zero_gen phony/third_party/perfetto/protos/perfetto/common/zero_gen phony/third_party/perfetto/protos/perfetto/config/cpp_gen phony/third_party/perfetto/protos/perfetto/config/zero_gen phony/third_party/perfetto/protos/perfetto/config/android/cpp_gen phony/third_party/perfetto/protos/perfetto/config/android/zero_gen phony/third_party/perfetto/protos/perfetto/config/ftrace/cpp_gen phony/third_party/perfetto/protos/perfetto/config/ftrace/zero_gen phony/third_party/perfetto/protos/perfetto/config/gpu/cpp_gen phony/third_party/perfetto/protos/perfetto/config/gpu/zero_gen phony/third_party/perfetto/protos/perfetto/config/inode_file/cpp_gen phony/third_party/perfetto/protos/perfetto/config/inode_file/zero_gen phony/third_party/perfetto/protos/perfetto/config/interceptors/cpp_gen phony/third_party/perfetto/protos/perfetto/config/interceptors/zero_gen phony/third_party/perfetto/protos/perfetto/config/power/cpp_gen phony/third_party/perfetto/protos/perfetto/config/power/zero_gen phony/third_party/perfetto/protos/perfetto/config/priority_boost/cpp_gen phony/third_party/perfetto/protos/perfetto/config/priority_boost/zero_gen phony/third_party/perfetto/protos/perfetto/config/process_stats/cpp_gen phony/third_party/perfetto/protos/perfetto/config/process_stats/zero_gen phony/third_party/perfetto/protos/perfetto/config/profiling/cpp_gen phony/third_party/perfetto/protos/perfetto/config/profiling/zero_gen phony/third_party/perfetto/protos/perfetto/config/protovm/cpp_gen phony/third_party/perfetto/protos/perfetto/config/protovm/zero_gen phony/third_party/perfetto/protos/perfetto/config/qnx/cpp_gen phony/third_party/perfetto/protos/perfetto/config/qnx/zero_gen phony/third_party/perfetto/protos/perfetto/config/statsd/cpp_gen phony/third_party/perfetto/protos/perfetto/config/statsd/zero_gen phony/third_party/perfetto/protos/perfetto/config/sys_stats/cpp_gen phony/third_party/perfetto/protos/perfetto/config/sys_stats/zero_gen phony/third_party/perfetto/protos/perfetto/config/system_info/cpp_gen phony/third_party/perfetto/protos/perfetto/config/system_info/zero_gen phony/third_party/perfetto/protos/perfetto/config/track_event/cpp_gen phony/third_party/perfetto/protos/perfetto/config/track_event/zero_gen phony/third_party/perfetto/protos/perfetto/perfetto_sql/zero_gen phony/third_party/perfetto/protos/perfetto/protovm/cpp_gen phony/third_party/perfetto/protos/perfetto/protovm/zero_gen phony/third_party/perfetto/protos/perfetto/trace/minimal_zero_gen phony/third_party/perfetto/protos/perfetto/trace/non_minimal_zero_gen phony/third_party/perfetto/protos/perfetto/trace/android/winscope_common_zero_gen phony/third_party/perfetto/protos/perfetto/trace/android/winscope_regular_zero_gen phony/third_party/perfetto/protos/perfetto/trace/android/zero_gen phony/third_party/perfetto/protos/perfetto/trace/chrome/zero_gen phony/third_party/perfetto/protos/perfetto/trace/etw/zero_gen phony/third_party/perfetto/protos/perfetto/trace/filesystem/zero_gen phony/third_party/perfetto/protos/perfetto/trace/ftrace/zero_gen phony/third_party/perfetto/protos/perfetto/trace/generic_kernel/zero_gen phony/third_party/perfetto/protos/perfetto/trace/gpu/zero_gen phony/third_party/perfetto/protos/perfetto/trace/interned_data/zero_gen phony/third_party/perfetto/protos/perfetto/trace/perfetto/zero_gen phony/third_party/perfetto/protos/perfetto/trace/power/zero_gen phony/third_party/perfetto/protos/perfetto/trace/profiling/zero_gen phony/third_party/perfetto/protos/perfetto/trace/ps/zero_gen phony/third_party/perfetto/protos/perfetto/trace/statsd/zero_gen phony/third_party/perfetto/protos/perfetto/trace/sys_stats/zero_gen phony/third_party/perfetto/protos/perfetto/trace/system_info/zero_gen phony/third_party/perfetto/protos/perfetto/trace/track_event/cpp_gen phony/third_party/perfetto/protos/perfetto/trace/track_event/zero_gen phony/third_party/perfetto/protos/perfetto/trace/translation/zero_gen phony/third_party/perfetto/protos/perfetto/trace_processor/zero_gen phony/third_party/perfetto/protos/perfetto/trace_summary/zero_gen phony/third_party/perfetto/protos/third_party/chromium/zero_gen phony/third_party/perfetto/protos/third_party/pprof/zero_gen phony/third_party/perfetto/src/trace_processor/importers/proto/gen_cc_android_track_event_descriptor phony/third_party/perfetto/src/trace_processor/importers/proto/gen_cc_chrome_track_event_descriptor phony/third_party/perfetto/src/trace_processor/importers/proto/gen_cc_track_event_descriptor phony/third_party/perfetto/src/trace_processor/tables/tables_python win_clang_x64_for_rust_host_build_tools/phony/third_party/rust/proc_macro2/v1/proc_macro2_lib_v1_build_script_output win_clang_x64_for_rust_host_build_tools/phony/third_party/rust/quote/v1/quote_lib_v1_build_script_output phony/third_party/rust/serde/v1/serde_lib_v1_build_script_output phony/third_party/rust/serde_core/v1/serde_core_lib_v1_build_script_output phony/third_party/rust/serde_json_lenient/v0_2/serde_json_lenient_lib_v0_2_build_script_output phony/third_party/rust/serde_json_lenient/v0_2/wrapper/wrapper_cxx_generated_gen phony/url/buildflags\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/net/net_cc.pch",
+      "ninja": "obj/net/net.ninja",
+      "producer": "obj/net/net/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/net/net_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/net/net/precompile.cc.obj: cxx ../../build/precompile.cc | phony/net/net.inputs || phony/net/net.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/sandbox/win/sandbox_cc.pch",
+      "ninja": "obj/sandbox/win/sandbox.ninja",
+      "producer": "obj/sandbox/win/sandbox/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/sandbox/win/sandbox_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/sandbox/win/sandbox/precompile.cc.obj: cxx ../../build/precompile.cc | phony/sandbox/win/sandbox.inputs || phony/sandbox/win/sandbox.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/storage/browser/browser_cc.pch",
+      "ninja": "obj/storage/browser/browser.ninja",
+      "producer": "obj/storage/browser/browser/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/storage/browser/browser_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/storage/browser/browser/precompile.cc.obj: cxx ../../build/precompile.cc | phony/storage/browser/browser.inputs || phony/storage/browser/browser.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/third_party/blink/renderer/platform/blob/blob_cc.pch",
+      "ninja": "obj/third_party/blink/renderer/platform/blob/blob.ninja",
+      "producer": "obj/third_party/blink/renderer/platform/blob/blob/precompile_platform.cc.obj",
+      "source": "../../third_party/blink/renderer/platform/win/precompile_platform.cc",
+      "definition": "cflags_cc = /Fpobj/third_party/blink/renderer/platform/blob/blob_cc.pch /Yu../../third_party/blink/renderer/platform/precompile_platform.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/third_party/blink/renderer/platform/blob/blob/precompile_platform.cc.obj: cxx ../../third_party/blink/renderer/platform/win/precompile_platform.cc | phony/third_party/blink/renderer/platform/blob/blob.inputs || phony/third_party/blink/renderer/platform/blob/blob.inputdeps\n  cflags_cc = ${cflags_cc} /Yc../../third_party/blink/renderer/platform/precompile_platform.h\n"
+    },
+    {
+      "pch": "obj/third_party/blink/renderer/platform/heap/heap_cc.pch",
+      "ninja": "obj/third_party/blink/renderer/platform/heap/heap.ninja",
+      "producer": "obj/third_party/blink/renderer/platform/heap/heap/precompile_platform.cc.obj",
+      "source": "../../third_party/blink/renderer/platform/win/precompile_platform.cc",
+      "definition": "cflags_cc = /Fpobj/third_party/blink/renderer/platform/heap/heap_cc.pch /Yu../../third_party/blink/renderer/platform/precompile_platform.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/third_party/blink/renderer/platform/heap/heap/precompile_platform.cc.obj: cxx ../../third_party/blink/renderer/platform/win/precompile_platform.cc | phony/third_party/blink/renderer/platform/heap/heap.inputs || phony/third_party/blink/renderer/platform/heap/heap.inputdeps\n  cflags_cc = ${cflags_cc} /Yc../../third_party/blink/renderer/platform/precompile_platform.h\n"
+    },
+    {
+      "pch": "obj/third_party/blink/renderer/platform/instrumentation/instrumentation_cc.pch",
+      "ninja": "obj/third_party/blink/renderer/platform/instrumentation/instrumentation.ninja",
+      "producer": "obj/third_party/blink/renderer/platform/instrumentation/instrumentation/precompile_platform.cc.obj",
+      "source": "../../third_party/blink/renderer/platform/win/precompile_platform.cc",
+      "definition": "cflags_cc = /Fpobj/third_party/blink/renderer/platform/instrumentation/instrumentation_cc.pch /Yu../../third_party/blink/renderer/platform/precompile_platform.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/third_party/blink/renderer/platform/instrumentation/instrumentation/precompile_platform.cc.obj: cxx ../../third_party/blink/renderer/platform/win/precompile_platform.cc | phony/third_party/blink/renderer/platform/instrumentation/instrumentation.inputs || phony/third_party/blink/renderer/platform/instrumentation/instrumentation.inputdeps\n  cflags_cc = ${cflags_cc} /Yc../../third_party/blink/renderer/platform/precompile_platform.h\n"
+    },
+    {
+      "pch": "obj/third_party/blink/renderer/platform/loader/loader_cc.pch",
+      "ninja": "obj/third_party/blink/renderer/platform/loader/loader.ninja",
+      "producer": "obj/third_party/blink/renderer/platform/loader/loader/precompile_platform.cc.obj",
+      "source": "../../third_party/blink/renderer/platform/win/precompile_platform.cc",
+      "definition": "cflags_cc = /Fpobj/third_party/blink/renderer/platform/loader/loader_cc.pch /Yu../../third_party/blink/renderer/platform/precompile_platform.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/third_party/blink/renderer/platform/loader/loader/precompile_platform.cc.obj: cxx ../../third_party/blink/renderer/platform/win/precompile_platform.cc | phony/third_party/blink/renderer/platform/loader/loader.inputs || phony/third_party/blink/renderer/platform/loader/loader.inputdeps\n  cflags_cc = ${cflags_cc} /Yc../../third_party/blink/renderer/platform/precompile_platform.h\n"
+    },
+    {
+      "pch": "obj/third_party/blink/renderer/platform/media/media_final_cc.pch",
+      "ninja": "obj/third_party/blink/renderer/platform/media/media_final.ninja",
+      "producer": "obj/third_party/blink/renderer/platform/media/media_final/precompile_platform.cc.obj",
+      "source": "../../third_party/blink/renderer/platform/win/precompile_platform.cc",
+      "definition": "cflags_cc = /Fpobj/third_party/blink/renderer/platform/media/media_final_cc.pch /Yu../../third_party/blink/renderer/platform/precompile_platform.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/third_party/blink/renderer/platform/media/media_final/precompile_platform.cc.obj: cxx ../../third_party/blink/renderer/platform/win/precompile_platform.cc | phony/third_party/blink/renderer/platform/media/media_final.inputs || phony/third_party/blink/renderer/platform/media/media_final.inputdeps\n  cflags_cc = ${cflags_cc} /Yc../../third_party/blink/renderer/platform/precompile_platform.h\n"
+    },
+    {
+      "pch": "obj/third_party/blink/renderer/platform/network/network_cc.pch",
+      "ninja": "obj/third_party/blink/renderer/platform/network/network.ninja",
+      "producer": "obj/third_party/blink/renderer/platform/network/network/precompile_platform.cc.obj",
+      "source": "../../third_party/blink/renderer/platform/win/precompile_platform.cc",
+      "definition": "cflags_cc = /Fpobj/third_party/blink/renderer/platform/network/network_cc.pch /Yu../../third_party/blink/renderer/platform/precompile_platform.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/third_party/blink/renderer/platform/network/network/precompile_platform.cc.obj: cxx ../../third_party/blink/renderer/platform/win/precompile_platform.cc | phony/third_party/blink/renderer/platform/network/network.inputs || phony/third_party/blink/renderer/platform/network/network.inputdeps\n  cflags_cc = ${cflags_cc} /Yc../../third_party/blink/renderer/platform/precompile_platform.h\n"
+    },
+    {
+      "pch": "obj/third_party/blink/renderer/platform/platform_cc.pch",
+      "ninja": "obj/third_party/blink/renderer/platform/platform.ninja",
+      "producer": "obj/third_party/blink/renderer/platform/platform/precompile_platform.cc.obj",
+      "source": "../../third_party/blink/renderer/platform/win/precompile_platform.cc",
+      "definition": "cflags_cc = /Fpobj/third_party/blink/renderer/platform/platform_cc.pch /Yu../../third_party/blink/renderer/platform/precompile_platform.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include -Wno-thread-safety\nbuild obj/third_party/blink/renderer/platform/platform/precompile_platform.cc.obj: cxx ../../third_party/blink/renderer/platform/win/precompile_platform.cc | phony/third_party/blink/renderer/platform/platform.inputs || phony/third_party/blink/renderer/platform/platform.inputdeps\n  cflags_cc = ${cflags_cc} /Yc../../third_party/blink/renderer/platform/precompile_platform.h\n"
+    },
+    {
+      "pch": "obj/third_party/blink/renderer/platform/scheduler/scheduler_cc.pch",
+      "ninja": "obj/third_party/blink/renderer/platform/scheduler/scheduler.ninja",
+      "producer": "obj/third_party/blink/renderer/platform/scheduler/scheduler/precompile_platform.cc.obj",
+      "source": "../../third_party/blink/renderer/platform/win/precompile_platform.cc",
+      "definition": "cflags_cc = /Fpobj/third_party/blink/renderer/platform/scheduler/scheduler_cc.pch /Yu../../third_party/blink/renderer/platform/precompile_platform.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/third_party/blink/renderer/platform/scheduler/scheduler/precompile_platform.cc.obj: cxx ../../third_party/blink/renderer/platform/win/precompile_platform.cc | phony/third_party/blink/renderer/platform/scheduler/scheduler.inputs || phony/third_party/blink/renderer/platform/scheduler/scheduler.inputdeps\n  cflags_cc = ${cflags_cc} /Yc../../third_party/blink/renderer/platform/precompile_platform.h\n"
+    },
+    {
+      "pch": "obj/third_party/blink/renderer/platform/wtf/wtf_cc.pch",
+      "ninja": "obj/third_party/blink/renderer/platform/wtf/wtf.ninja",
+      "producer": "obj/third_party/blink/renderer/platform/wtf/wtf/precompile.cc.obj",
+      "source": "../../third_party/blink/renderer/build/win/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/third_party/blink/renderer/platform/wtf/wtf_cc.pch /Yuthird_party/blink/renderer/build/win/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/third_party/blink/renderer/platform/wtf/wtf/precompile.cc.obj: cxx ../../third_party/blink/renderer/build/win/precompile.cc | phony/third_party/blink/renderer/platform/wtf/wtf.inputs || phony/third_party/blink/renderer/platform/wtf/wtf.inputdeps\n  cflags_cc = ${cflags_cc} /Ycthird_party/blink/renderer/build/win/precompile.h\n"
+    },
+    {
+      "pch": "obj/ui/gfx/animation/keyframe/keyframe_cc.pch",
+      "ninja": "obj/ui/gfx/animation/keyframe/keyframe.ninja",
+      "producer": "obj/ui/gfx/animation/keyframe/keyframe/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/ui/gfx/animation/keyframe/keyframe_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/ui/gfx/animation/keyframe/keyframe/precompile.cc.obj: cxx ../../build/precompile.cc | phony/ui/gfx/animation/keyframe/keyframe.inputs || phony/ui/gfx/animation/keyframe/keyframe.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/ui/gfx/gfx_cc.pch",
+      "ninja": "obj/ui/gfx/gfx.ninja",
+      "producer": "obj/ui/gfx/gfx/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/ui/gfx/gfx_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/ui/gfx/gfx/precompile.cc.obj: cxx ../../build/precompile.cc | phony/ui/gfx/gfx.inputs || phony/ui/gfx/gfx.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    },
+    {
+      "pch": "obj/ui/gl/gl_cc.pch",
+      "ninja": "obj/ui/gl/gl.ninja",
+      "producer": "obj/ui/gl/gl/precompile.cc.obj",
+      "source": "../../build/precompile.cc",
+      "definition": "cflags_cc = /Fpobj/ui/gl/gl_cc.pch /Yubuild/precompile.h -Wno-invalid-offsetof -Wenum-compare-conditional -Wno-nullability-completeness -Wunique-object-duplication /std$:c++23preview -Wno-trigraphs /GR- -I../../third_party/libc++/src/include\nbuild obj/ui/gl/gl/precompile.cc.obj: cxx ../../build/precompile.cc | phony/ui/gl/gl.inputs || phony/ui/gl/gl.inputdeps\n  cflags_cc = ${cflags_cc} /Ycbuild/precompile.h\n"
+    }
+  ]
+}
