@@ -85,6 +85,19 @@
           "preparedSha256": "1f78c79e917428ab1d3b2cbb452c58fa1a8c4918d23ff6b9edfb1e4214c770eb"
         }
       ]
+    },
+    {
+      "patch": "patches/0007-restore-devtools-esbuild.patch",
+      "seriesName": "extra/fingerprint/999-fingerbrowser-devtools-esbuild.patch",
+      "files": [
+        {
+          "path": "third_party/devtools-frontend/src/scripts/build/ninja/bundle.gni",
+          "postUpstreamSha256": "001a304c833c619eb48e0dbf910bb6cf1a9508604c22b237eadb2295b8f6f4a3",
+          "patchedSha256": "9f69ccff3ba8d4660f0ae00f1b6feca803f8356f14c3c891fe8945674bf050f1",
+          "preparedBeforeSha256": "001a304c833c619eb48e0dbf910bb6cf1a9508604c22b237eadb2295b8f6f4a3",
+          "preparedSha256": "9f69ccff3ba8d4660f0ae00f1b6feca803f8356f14c3c891fe8945674bf050f1"
+        }
+      ]
     }
   ],
   "schemaVersion": 1

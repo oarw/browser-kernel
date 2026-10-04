@@ -1,6 +1,9 @@
 {
   "schemaVersion": 1,
   "chromiumVersion": "148.0.7778.215",
+  "devtools": {
+    "commit": "1fb83ff123c44ab59a480056c8c1ba3d33c2caf0"
+  },
   "sourceArchive": {
     "url": "https://commondatastorage.googleapis.com/chromium-browser-official/chromium-148.0.7778.215-lite.tar.xz",
     "size": 1593195044,
