@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -52,10 +53,21 @@ def check(output):
         tree = scratch / 'source'
         overlays = load_overlays()
         names = [lock['targetFile'], *targets(overlays)]
+        devtools_prefix = 'third_party/devtools-frontend/src/'
+        with urllib.request.urlopen(
+                f"https://raw.githubusercontent.com/chromium/chromium/{lock['chromiumVersion']}/DEPS",
+                timeout=30) as response:
+            deps = response.read().decode('utf8')
+        revision = re.search(r"'devtools_frontend_revision':\s*'([0-9a-f]{40})'", deps)
+        if revision is None or revision[1] != lock['devtools']['commit']:
+            raise RuntimeError('DevTools source lock differs from Chromium DEPS')
         for name in names:
             target = tree / name
             target.parent.mkdir(parents=True, exist_ok=True)
             url = f"https://raw.githubusercontent.com/chromium/chromium/{lock['chromiumVersion']}/{name}"
+            if name.startswith(devtools_prefix):
+                url = (f"https://raw.githubusercontent.com/ChromeDevTools/devtools-frontend/"
+                       f"{lock['devtools']['commit']}/{name.removeprefix(devtools_prefix)}")
             with urllib.request.urlopen(url, timeout=30) as response:
                 target.write_bytes(response.read())
         target = tree / lock['targetFile']
@@ -98,6 +110,7 @@ def check(output):
         if any((tree / name).read_bytes() != (resumed / name).read_bytes() for name in names):
             raise RuntimeError('Fresh and migrated source trees differ')
         result.update(sourceCompatible=True, chromiumVersion=lock['chromiumVersion'], fingerprintCommit=commit,
+                      devtoolsCommit=lock['devtools']['commit'],
                       upstreamPatches=applied, beforeSha256=before, afterSha256=after,
                       patchSha256=hashlib.sha256(patch.read_bytes()).hexdigest(), overlays=overlays,
                       freshAndResumedSourcesMatch=True)
