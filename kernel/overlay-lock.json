@@ -72,6 +72,19 @@
           "preparedSha256": "9a2d89bda324a72a646acb812f9a57bd9d407530f24c977def06249dcd077d06"
         }
       ]
+    },
+    {
+      "patch": "patches/0006-fix-user-agent-component-deps.patch",
+      "seriesName": "extra/fingerprint/999-fingerbrowser-user-agent-component-deps.patch",
+      "files": [
+        {
+          "path": "components/embedder_support/BUILD.gn",
+          "postUpstreamSha256": "355120ca227322e7c2c4a2691c8573c2e7b56a0d4c8f8c34b93286a373e4ee38",
+          "patchedSha256": "1f78c79e917428ab1d3b2cbb452c58fa1a8c4918d23ff6b9edfb1e4214c770eb",
+          "preparedBeforeSha256": "355120ca227322e7c2c4a2691c8573c2e7b56a0d4c8f8c34b93286a373e4ee38",
+          "preparedSha256": "1f78c79e917428ab1d3b2cbb452c58fa1a8c4918d23ff6b9edfb1e4214c770eb"
+        }
+      ]
     }
   ],
   "schemaVersion": 1

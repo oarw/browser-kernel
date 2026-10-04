@@ -1,0 +1,14 @@
+--- a/components/embedder_support/BUILD.gn
++++ b/components/embedder_support/BUILD.gn
+@@ -60,9 +60,10 @@
+     "//build:branding_buildflags",
+     "//components/policy/core/common",
+     "//components/prefs",
++    "//components/ungoogled:ungoogled_switches",
+     "//components/version_info",
+     "//net",
+-    "//third_party/blink/public/common:headers",
++    "//third_party/blink/public/common:common",
+     "//ui/base",
+   ]
+ }

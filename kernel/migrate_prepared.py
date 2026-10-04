@@ -9,6 +9,54 @@ from build_support import digest, now, validate_prepared, write_json
 from source_overlays import HERE, targets, validate_sources
 
 
+BLINK_TARGETS = ('blink_common.dll', 'blink_core.dll', 'blink_modules.dll')
+# Chromium 148's component() derives output_name from the full GN label
+# //components/ungoogled:ungoogled_switches, not just its target name.
+SWITCH_IMPORT_LIBRARY = 'components_ungoogled_ungoogled_switches.dll.lib'
+
+
+def direct_link_inputs(query):
+    inputs = set()
+    in_inputs = False
+    for line in query.splitlines():
+        if line.startswith('  input: '):
+            in_inputs = True
+        elif line.startswith('  ') and not line.startswith('    '):
+            in_inputs = False
+        elif in_inputs and line.startswith('    '):
+            value = line.strip()
+            if not value.startswith('|| '):
+                inputs.add(value.removeprefix('| '))
+    return inputs
+
+
+def validate_blink_link_inputs(source, report_path):
+    report = {'schemaVersion': 1, 'status': 'validating',
+              'expectedImportLibrary': SWITCH_IMPORT_LIBRARY, 'targets': {}}
+    try:
+        for target in BLINK_TARGETS:
+            query = subprocess.run([str(source / 'third_party/ninja/ninja.exe'), '-C', 'out/Default',
+                                    '-t', 'query', target], cwd=source, check=True,
+                                   capture_output=True, text=True, timeout=30).stdout
+            inputs = direct_link_inputs(query)
+            report['targets'][target] = {
+                'importLibraries': sorted(name for name in inputs if name.endswith('.dll.lib')),
+                'querySha256': hashlib.sha256(query.encode('utf8')).hexdigest(),
+                'hasDirectImportLibrary': SWITCH_IMPORT_LIBRARY in inputs,
+            }
+        missing = [target for target, result in report['targets'].items()
+                   if not result['hasDirectImportLibrary']]
+        if missing:
+            raise RuntimeError(f'Regenerated {", ".join(missing)} is missing its direct import library: '
+                               f'{SWITCH_IMPORT_LIBRARY}')
+        report['status'] = 'passed'
+    except BaseException as error:
+        report.update(status='failed', error=f'{type(error).__name__}: {error}')
+        raise
+    finally:
+        write_json(report_path, report)
+
+
 def split_overlays(legacy, overlays):
     """Only append overlays to the exact reviewed, unchanged patch prefix."""
     installed = legacy['inputs'].get('overlaySha256', {})
@@ -96,15 +144,7 @@ def migrate(root, identity, overlays, prepared_files, regenerate):
         after = command_fingerprint(source, root / 'migration-commands-after.txt')
         if before != after:
             raise RuntimeError('GN migration changed commands outside the reviewed dependency update')
-        for target in ('blink_common.dll', 'blink_core.dll', 'blink_modules.dll'):
-            query = subprocess.run([str(source / 'third_party/ninja/ninja.exe'), '-C', 'out/Default',
-                                    '-t', 'query', target], cwd=source, check=True,
-                                   capture_output=True, text=True, timeout=30).stdout
-            # Match an input line, not a substring in an unrelated output name.
-            inputs = query.split('  input:', 1)[-1].split('  outputs:', 1)[0]
-            if ('  input:' not in query or 'ungoogled_switches.dll.lib' not in
-                    {line.strip().removeprefix('| ') for line in inputs.splitlines()}):
-                raise RuntimeError(f'Regenerated {target} is missing its direct import library')
+        validate_blink_link_inputs(source, root / 'link-checks.json')
         report.update(status='migrated', finishedAt=now(), commandsPreserved=sum(before.values()),
                       appliedOverlays=[item['patch'] for item in pending],
                       sourceAfter={name: digest(source / name) for name in targets(overlays)},

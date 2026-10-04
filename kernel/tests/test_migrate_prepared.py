@@ -4,6 +4,7 @@ import difflib
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -52,7 +53,7 @@ class MigrationTests(unittest.TestCase):
         self.files = [*self.original['preparedFiles'], 'input.cc']
 
     def run_migration(self, commands=None, regenerate=None,
-                      query='target:\n  input: solink\n    ungoogled_switches.dll.lib\n  outputs:\n'):
+                      query='target:\n  input: solink\n    components_ungoogled_ungoogled_switches.dll.lib\n  outputs:\n'):
         original_run = subprocess.run
         def run(command, **kwargs):
             if str(command[0]).endswith('ninja.exe'):
@@ -123,12 +124,12 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(json.loads((self.root / 'prepared.json').read_text()), self.original)
 
     def test_every_blink_dll_requires_its_own_import_library(self):
-        valid = 'target:\n  input: solink\n    ungoogled_switches.dll.lib\n  outputs:\n'
+        valid = 'target:\n  input: solink\n    components_ungoogled_ungoogled_switches.dll.lib\n  outputs:\n'
         for missing in ('blink_common.dll', 'blink_core.dll', 'blink_modules.dll'):
             with self.subTest(target=missing):
                 queries = {target: valid for target in ('blink_common.dll', 'blink_core.dll', 'blink_modules.dll')}
                 # An output reference must not masquerade as a link input.
-                queries[missing] = 'target:\n  input: solink\n    other.lib\n  outputs:\n    ungoogled_switches.dll.lib\n'
+                queries[missing] = 'target:\n  input: solink\n    other.lib\n  outputs:\n    components_ungoogled_ungoogled_switches.dll.lib\n'
                 with self.assertRaisesRegex(RuntimeError, missing):
                     self.run_migration(query=queries)
                 self.assertEqual(json.loads((self.root / 'prepared.json').read_text()), self.original)
@@ -136,7 +137,49 @@ class MigrationTests(unittest.TestCase):
                 (self.source / 'out/Default/build.ninja').write_text('old graph\n', encoding='utf8', newline='\n')
 
     def test_ninja_implicit_link_inputs_are_accepted(self):
-        self.run_migration(query='target:\n  input: solink\n    | ungoogled_switches.dll.lib\n  outputs:\n')
+        self.run_migration(query='target:\n  input: solink\n    | components_ungoogled_ungoogled_switches.dll.lib\n  outputs:\n')
+
+    def test_only_the_exact_link_input_is_accepted(self):
+        library = 'components_ungoogled_ungoogled_switches.dll.lib'
+        invalid = [
+            '    ungoogled_switches.dll.lib\n',
+            f'    unrelated_{library}\n',
+            f'    obj/other/{library}\n',
+            f'    || {library}\n',
+            f'  validations:\n    {library}\n',
+            f'  outputs:\n    {library}\n',
+        ]
+        for lines in invalid:
+            with self.subTest(lines=lines):
+                query = 'target:\n  input: solink\n' + lines
+                with self.assertRaisesRegex(RuntimeError, 'missing its direct import library'):
+                    self.run_migration(query=query)
+                self.assertEqual(json.loads((self.root / 'prepared.json').read_text()), self.original)
+                report = json.loads((self.root / 'link-checks.json').read_text())
+                self.assertEqual(report['status'], 'failed')
+                self.assertEqual(len(report['targets']), 3)
+                (self.source / 'input.cc').write_text('old source\n', encoding='utf8', newline='\n')
+                (self.source / 'out/Default/build.ninja').write_text('old graph\n', encoding='utf8', newline='\n')
+
+    @unittest.skipUnless(shutil.which('ninja'), 'Ninja is required for the real query regression')
+    def test_real_ninja_query_uses_the_component_output_name(self):
+        # Small graph, real Ninja output. The library name is verified against
+        # Chromium 148's component() and run 36694837794's actual LINK log.
+        graph = self.root / 'query-graph'
+        graph.mkdir()
+        fixture = Path(__file__).parent / 'fixtures/blink-link-inputs.ninja'
+        shutil.copyfile(fixture, graph / 'build.ninja')
+        queries = {target: subprocess.run(
+            [shutil.which('ninja'), '-C', str(graph), '-t', 'query', target],
+            check=True, capture_output=True, text=True, timeout=30).stdout
+            for target in ('blink_common.dll', 'blink_core.dll', 'blink_modules.dll')}
+        self.run_migration(query=queries)
+        report = json.loads((self.root / 'link-checks.json').read_text())
+        self.assertEqual(report['status'], 'passed')
+        for target, result in report['targets'].items():
+            self.assertTrue(result['hasDirectImportLibrary'])
+            self.assertEqual(result['importLibraries'], ['components_ungoogled_ungoogled_switches.dll.lib'])
+            self.assertEqual(result['querySha256'], hashlib.sha256(queries[target].encode('utf8')).hexdigest())
 
     def install_previous_overlay(self):
         path = self.source / 'previous.cc'
