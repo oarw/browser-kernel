@@ -1,0 +1,9 @@
+# Query-only model of Chromium 148's Windows component link edges.
+# The prefixed output name follows build/config/BUILDCONFIG.gn component()
+# and is present in build-kernel run 36694837794's 09:59:54 UTC LINK log.
+rule solink
+  command = unused-linker @$out.rsp
+build components_ungoogled_ungoogled_switches.dll components_ungoogled_ungoogled_switches.dll.lib: solink switches.obj
+build blink_common.dll blink_common.dll.lib: solink common.obj components_ungoogled_ungoogled_switches.dll.lib
+build blink_core.dll blink_core.dll.lib: solink core.obj | components_ungoogled_ungoogled_switches.dll.lib
+build blink_modules.dll blink_modules.dll.lib: solink modules.obj components_ungoogled_ungoogled_switches.dll.lib

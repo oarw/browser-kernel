@@ -15,7 +15,7 @@ import subprocess
 import sys
 from build_support import digest, now, preflight, run_windows_process, validate_prepared, validate_work_dir, workspace_lock, write_json
 from source_overlays import install_overlays, load_overlays, overlay_identity, targets, validate_sources
-from migrate_prepared import migrate, reviewed_overlay_series
+from migrate_prepared import migrate, reviewed_overlay_series, validate_blink_link_inputs
 
 HERE = Path(__file__).resolve().parent
 LOCK = json.loads((HERE / 'source-lock.json').read_text(encoding='utf8'))
@@ -186,6 +186,7 @@ def build(args, root):
                 if actual != LOCK['patchedSha256']:
                     raise RuntimeError('Final native source does not match the reviewed patched file')
                 validate_sources(source, OVERLAYS)
+                validate_blink_link_inputs(source, root / 'link-checks.json')
                 prepared = {'schemaVersion': 1, 'inputs': identity, 'preparedAt': now(), 'sourceSha256': actual,
                             'preparedFiles': {name: digest(source / name) for name in PREPARED_FILES}}
                 write_json(marker, prepared)

@@ -37,6 +37,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
+      - run: ninja --version
       - run: python -m unittest discover -s kernel/tests -v
       - run: node --test
       - run: node --check scripts/verify-kernel.mjs

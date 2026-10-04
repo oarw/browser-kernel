@@ -131,7 +131,7 @@ jobs:
           name: checkpoint-${{ github.run_id }}-${{ github.run_attempt }}-1
           path: release/checkpoint/
           compression-level: 0
-          retention-days: 2
+          retention-days: 90
           if-no-files-found: error
       - name: Collect state
         if: always()
@@ -141,7 +141,7 @@ jobs:
           foreach ($path in @('release/budget.json', 'release/preflight.json', 'release/checkpoint/manifest.json', 'release/trusted-source.json', 'release/resume-progress.json', 'release/pch-recovery.json')) {
             if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination release/state }
           }
-          foreach ($name in @('build-state.json', 'build-result.json', 'prepared.json', 'preflight-prepare.json', 'preflight-build.json', 'migration.json')) {
+          foreach ($name in @('build-state.json', 'build-result.json', 'prepared.json', 'preflight-prepare.json', 'preflight-build.json', 'migration.json', 'link-checks.json')) {
             $path = Join-Path 'D:\fb-kernel' $name
             if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination release/state }
           }
@@ -151,5 +151,5 @@ jobs:
         with:
           name: build-state-${{ github.run_id }}-${{ github.run_attempt }}
           path: release/state/
-          retention-days: 7
+          retention-days: 90
           if-no-files-found: warn
