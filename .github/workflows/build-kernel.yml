@@ -2,6 +2,16 @@ name: build-kernel
 on:
   workflow_dispatch:
     inputs:
+      compile_jobs:
+        description: 'Ninja parallelism (2 is the fallback)'
+        type: choice
+        options: ['3', '2']
+        default: '3'
+      save_minutes:
+        description: 'Checkpoint reserve (50 is the fallback)'
+        type: choice
+        options: ['30', '50']
+        default: '30'
       source_run:
         description: 'Previous successful build run ID (leave all source fields empty for a fresh build)'
         type: string
@@ -29,6 +39,8 @@ concurrency:
 env:
   PYTHONUTF8: '1'
   PYTHONDONTWRITEBYTECODE: '1'
+  COMPILE_JOBS: ${{ inputs.compile_jobs || '3' }}
+  SAVE_MINUTES: ${{ inputs.save_minutes || '30' }}
 
 jobs:
   build:
@@ -99,15 +111,15 @@ jobs:
         timeout-minutes: 20
         run: python -u kernel/build_windows.py --work-dir D:\fb-kernel --jobs 2 --prepare-only --migrate-prepared
       - id: budget
-        run: python kernel/build_budget.py --started-at "$env:BUILD_STARTED_AT" --output release/budget.json
+        run: python kernel/build_budget.py --started-at "$env:BUILD_STARTED_AT" --save-minutes $env:SAVE_MINUTES --output release/budget.json
       - id: compile
         name: Compile chrome
         shell: pwsh
-        timeout-minutes: 310
+        timeout-minutes: 330
         env:
           COMPILE_MINUTES: ${{ steps.budget.outputs.minutes }}
         run: |
-          python -u kernel/build_windows.py --work-dir D:\fb-kernel --jobs 2 --build-timeout-minutes $env:COMPILE_MINUTES --checkpoint-on-timeout
+          python -u kernel/measure_build.py --work-dir D:\fb-kernel --jobs $env:COMPILE_JOBS --build-timeout-minutes $env:COMPILE_MINUTES --output release/performance
           $code = $LASTEXITCODE
           if ($code -notin @(0, 124)) { throw "Build failed with exit code $code" }
           $state = Get-Content -Raw -LiteralPath D:\fb-kernel\build-state.json | ConvertFrom-Json
@@ -117,16 +129,17 @@ jobs:
           "status=$($state.status)" >> $env:GITHUB_OUTPUT
           exit 0
       - name: Verify resumed progress
+        timeout-minutes: 2
         if: inputs.source_run != ''
         env:
           MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
         run: python kernel/checkpoint.py verify-progress --work-dir D:\fb-kernel --source release/source-checkpoint --manifest-sha256 "$env:MANIFEST_SHA256" --output release/resume-progress.json
       - id: checkpoint
         run: python kernel/checkpoint.py create --work-dir D:\fb-kernel --output release/checkpoint
-        timeout-minutes: 35
+        timeout-minutes: ${{ fromJSON(steps.budget.outputs.pack_minutes) }}
       - id: upload
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        timeout-minutes: 10
+        timeout-minutes: ${{ fromJSON(steps.budget.outputs.upload_minutes) }}
         with:
           name: checkpoint-${{ github.run_id }}-${{ github.run_attempt }}-1
           path: release/checkpoint/
@@ -135,9 +148,11 @@ jobs:
           if-no-files-found: error
       - name: Collect state
         if: always()
+        timeout-minutes: 1
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path release/state | Out-Null
+          if (Test-Path release/performance) { Copy-Item release/performance -Destination release/state -Recurse }
           foreach ($path in @('release/budget.json', 'release/preflight.json', 'release/checkpoint/manifest.json', 'release/trusted-source.json', 'release/resume-progress.json', 'release/pch-recovery.json')) {
             if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination release/state }
           }
@@ -147,7 +162,7 @@ jobs:
           }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
-        timeout-minutes: 5
+        timeout-minutes: 2
         with:
           name: build-state-${{ github.run_id }}-${{ github.run_attempt }}
           path: release/state/
