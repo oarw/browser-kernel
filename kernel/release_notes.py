@@ -30,16 +30,19 @@ def render(version, report, previous=None, commits=()):
     version_key(version)
     source = report['source']['GITHUB_SHA']
     lines = [f'# FingerBrowser 内核 {version}', '', '## 本次更新', '']
-    if previous and previous['sourceCommit'] == source:
+    if previous and previous['sourceCommit'] == source and previous.get('sha256') == report['archiveSha256']:
         lines += [f'- 与上一版 `{previous["version"]}` 使用相同的 Chromium 源码提交；本次没有新增内核功能或修复。',
                   '- 重新核验运行包并发布独立候选版本，供软件按版本下载安装和切换。']
+    elif previous and previous['sourceCommit'] == source:
+        lines += [f'- 与上一版 `{previous["version"]}` 的源码提交相同，但运行包摘要发生变化。',
+                  '- 请结合构建输入、补丁和文件清单核对差异；不能仅凭源码提交相同认定二进制或功能完全一致。']
     elif previous:
         lines += [f'- 相比 `{previous["version"]}` 更新了内核源码，具体提交如下：']
         lines += [f'  - {item["commit"]["message"].splitlines()[0]}（[{item["sha"][:8]}]({ROOT}/commit/{item["sha"]})）' for item in commits]
         lines += [f'- [完整源码对比]({ROOT}/compare/{previous["sourceCommit"]}...{source})。提交列表不等同于功能验收。']
     else:
         lines += ['- 首个可由 FingerBrowser 版本目录下载安装的自产内核候选，提供包摘要、可执行文件摘要及源码来源。']
-    if report.get('executableSha256') == 'fd05ed90618bb93c2d848b75255942726890751866122a0aa074397faf12f4ac':
+    if report.get('archiveSha256') == 'bd75902b50aa785d701e15a927519c9f2874991a8030e2c94d65bab973f86c2a':
         lines += ['', '## 本版包含的功能', '',
                   '- 修复 Canvas TextMetrics 文本测量和页面、iframe、Worker 的结果一致性。',
                   '- 提供本机密码保存、更新和重启自动填写能力；无痕环境不提示保存。',
