@@ -47,6 +47,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r kernel/requirements.txt
+      - name: Verify read-only workspace reset
+        run: python kernel/benchmark_parallel.py --probe-reset
       - name: Verify checkpoint source
         env:
           GH_TOKEN: ${{ github.token }}

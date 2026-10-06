@@ -8,9 +8,11 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import stat
 import statistics
 import subprocess
 import sys
+import tempfile
 import time
 
 from benchmark_resources import FastSampler, run_guarded
@@ -232,6 +234,42 @@ def build_command(root, inspection, jobs):
     return ['cmd.exe', '/d', '/v:off', '/c', str(script)]
 
 
+def remove_readonly_tree(root):
+    """Remove an already authorized tree; only retry Windows read-only regular files."""
+    root = root.resolve()
+    if root == Path(root.anchor):
+        raise RuntimeError('Refusing to remove a filesystem root')
+
+    def retry_readonly(function, name, error):
+        path = Path(name)
+        if (not isinstance(error, PermissionError) or function is not os.unlink
+                or path.is_symlink() or not path.resolve().is_relative_to(root)):
+            raise error
+        info = path.lstat()
+        if (os.name != 'nt' or not stat.S_ISREG(info.st_mode)
+                or not getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_READONLY):
+            raise error
+        # Do not alter ACLs or suppress unrelated permission/sharing errors.
+        os.chmod(path, stat.S_IREAD | stat.S_IWRITE)
+        function(path)
+
+    shutil.rmtree(root, onexc=retry_readonly)
+
+
+def probe_readonly_reset(parent):
+    root = Path(tempfile.mkdtemp(prefix='fb-benchmark-reset-probe-', dir=parent)).resolve()
+    if root.parent != parent.resolve():
+        raise RuntimeError('Reset probe escaped its expected parent')
+    packed = root / '.git/objects/pack/fixture.idx'
+    packed.parent.mkdir(parents=True)
+    packed.write_bytes(b'benchmark reset probe')
+    os.chmod(packed, stat.S_IREAD)
+    remove_readonly_tree(root)
+    if root.exists():
+        raise RuntimeError('Reset probe did not remove its workspace')
+    return {'status': 'passed', 'checkedAt': now(), 'readOnlyPackedFile': True}
+
+
 def remove_owned_workspace(root, owner, expected):
     # The only recursive deletion in this experiment: exact, fixed, owned path.
     if (str(root) != r'D:\fb-kernel' or root.is_symlink() or root.resolve() != root
@@ -239,7 +277,7 @@ def remove_owned_workspace(root, owner, expected):
             or (root / 'build.lock').exists()):
         raise RuntimeError('Refusing to reset a workspace not owned by this benchmark')
     if root.exists():
-        shutil.rmtree(root)
+        remove_readonly_tree(root)
 
 
 def reset_outputs(output, names):
@@ -438,4 +476,9 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    if sys.argv[1:] == ['--probe-reset']:
+        if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
+            raise SystemExit('Reset probe requires a Windows Actions runner')
+        write_json(Path('release/reset-probe.json'), probe_readonly_reset(Path('D:/')))
+    else:
+        main()
