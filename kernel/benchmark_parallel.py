@@ -23,7 +23,7 @@ HERE = Path(__file__).resolve().parent
 ORDER = (3, 4, 4, 3)
 LINKS = ('blink_core.dll', 'blink_modules.dll', 'blink_controller.dll')
 POLICY = {
-    'name': 'bounded-abba-v1', 'availableMemoryBytes': 10 * GIB,
+    'name': 'bounded-abba-v2', 'availableMemoryBytes': 10 * GIB,
     'commitHeadroomBytes': 10 * GIB, 'totalMemoryBytes': 15 * GIB,
     'freeDiskBytes': 40 * GIB, 'maxCxxTargets': 240, 'maxMixedCxxTargets': 12,
     'maxLinkTargets': 3, 'guardIntervalSeconds': 1, 'detailedIntervalSeconds': 10,
@@ -109,6 +109,73 @@ def audit_commands(text, count):
                 or re.search(r'(?:^| )/Yc', command)
                 or re.search(r'[&|<>\r\n]', command)):
             raise RuntimeError('Expected a direct clang-cl compilation without PCH creation or shell chaining')
+
+
+def choose_mixed_targets(output):
+    """Select existing internal Blink objects, not UI consumers of Blink generators."""
+    groups = ('core/core', 'modules/webaudio/webaudio', 'controller/controller')
+    completed = {}
+    for line in (output / '.ninja_log').read_text(encoding='utf8').splitlines():
+        fields = line.split('\t')
+        if len(fields) == 5 and fields[3].endswith('.obj') and 'precompile' not in fields[3]:
+            completed[fields[3]] = int(fields[1]) - int(fields[0])
+    selected = []
+    for group in groups:
+        parent = 'obj/third_party/blink/renderer/' + group
+        candidates = sorted((duration, name) for name, duration in completed.items()
+                            if str(PurePosixPath(name).parent) == parent and checked_output(output, name).is_file())
+        if len(candidates) < 4:
+            raise RuntimeError(f'Need four completed ordinary C++ objects in {parent}')
+        selected.extend(candidates[index * (len(candidates) - 1) // 3][1] for index in range(4))
+    return selected
+
+
+def task_digest(tasks):
+    return hashlib.sha256(json.dumps({key: tasks[key] for key in ('cxx', 'mixedCxx', 'links')},
+                                     sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+
+def audit_mixed_before_compile(root, trial, cxx, query_fn=None):
+    """Invalidate only owned outputs temporarily; restore bytes and mtimes even on rejection."""
+    source = root / 'windows/build/src'
+    output = source / 'out/Default'
+    backup = root / 'tmp/benchmark-mixed-audit'
+    backup.mkdir(parents=True, exist_ok=False)
+    names = [*cxx, *LINKS, '.ninja_log', '.ninja_deps']
+    paths = [checked_output(output, name) for name in names]
+    records = []
+    # Finish every backup before invalidating any file.
+    for index, (name, path) in enumerate(zip(names, paths)):
+        if not path.is_file():
+            raise RuntimeError(f'Missing mixed audit input: {name}')
+        destination = backup / str(index)
+        shutil.copy2(path, destination)
+        records.append({'name': name, 'sha256': digest(path), 'mtimeNs': path.stat().st_mtime_ns,
+                        'backup': str(destination)})
+    report = {'status': 'auditing', 'outputs': records}
+    write_json(trial / 'mixed-preflight.json', report)
+    try:
+        reset_outputs(output, [*cxx, *LINKS])
+        write_wrapper(output, [*cxx, *LINKS])
+        plan = (query_fn or query)(source, '-n', '-f', 'benchmark-only.ninja', '__bounded_benchmark__')
+        (trial / 'mixed-preflight-plan.txt').write_text(plan, encoding='utf8')
+        audit_plan(plan, cxx, LINKS)
+        report['status'] = 'passed'
+    except BaseException as error:
+        report.update(status='failed', error=f'{type(error).__name__}: {error}')
+        raise
+    finally:
+        try:
+            for record, path in zip(records, paths):
+                shutil.copy2(record['backup'], path)
+                if digest(path) != record['sha256'] or path.stat().st_mtime_ns != record['mtimeNs']:
+                    raise RuntimeError(f'Mixed audit failed to restore {record["name"]}')
+            report['restored'] = True
+        except BaseException as error:
+            report.update(status='failed', restored=False, restoreError=str(error))
+            raise
+        finally:
+            write_json(trial / 'mixed-preflight.json', report)
 
 
 def experiment_preflight(root, jobs, output):
@@ -247,11 +314,14 @@ def previous_trial(evidence, owner, expected_owner, receipt, trial):
         raise RuntimeError('Previous trial identity, order or status does not match this continuation')
     tasks = json.loads((evidence / 'tasks.json').read_text(encoding='utf8'))
     targets = tasks['cxx']
+    mixed = tasks.get('mixedCxx', [])
     if (len(targets) != POLICY['maxCxxTargets'] or len(set(targets)) != len(targets)
-            or hashlib.sha256('\n'.join(targets).encode()).hexdigest() != tasks['sha256']):
+            or len(mixed) != POLICY['maxMixedCxxTargets'] or len(set(mixed)) != len(mixed)
+            or set(mixed) & set(targets) or tasks.get('links') != list(LINKS)
+            or task_digest(tasks) != tasks['sha256']):
         raise RuntimeError('Fixed task list changed between trials')
     baseline = json.loads((evidence / 'baseline.json').read_text(encoding='utf8'))
-    return report, targets, baseline
+    return report, tasks, baseline
 
 
 def main():
@@ -275,7 +345,8 @@ def main():
     owner = root.parent / 'fb-kernel-benchmark-owner.json'
     expected_owner = {'workspace': str(root), 'context': context()}
     if continuing:
-        report, targets, baseline = previous_trial(evidence, owner, expected_owner, receipt, args.trial)
+        report, tasks, baseline = previous_trial(evidence, owner, expected_owner, receipt, args.trial)
+        targets, mixed_targets = tasks['cxx'], tasks['mixedCxx']
     else:
         if root.exists() or owner.exists():
             raise RuntimeError('Benchmark requires a fresh runner and absent workspace')
@@ -284,6 +355,7 @@ def main():
                   'source': receipt, 'policy': POLICY, 'order': ORDER, 'trials': [],
                   'browserCompiled': False, 'browserAcceptancePassed': False}
         targets = None
+        mixed_targets = None
         baseline = None
     write_json(evidence / 'benchmark.json', report)
     started_at = datetime.fromisoformat(report['startedAt'])
@@ -328,19 +400,23 @@ def main():
                 dry = query(source, '-n', 'chrome')
                 (evidence / 'remaining-plan.txt').write_text(dry, encoding='utf8')
                 targets = choose_targets(dry, output)
-                write_json(evidence / 'tasks.json', {'cxx': targets, 'mixedCxx': targets[:12], 'links': LINKS,
-                           'sha256': hashlib.sha256('\n'.join(targets).encode()).hexdigest()})
+                mixed_targets = choose_mixed_targets(output)
+                tasks = {'cxx': targets, 'mixedCxx': mixed_targets, 'links': list(LINKS)}
+                write_json(evidence / 'tasks.json', {**tasks, 'sha256': task_digest(tasks)})
             if any(checked_output(output, name).exists() for name in targets):
                 raise RuntimeError('Expected identical absent C++ outputs at the start of every trial')
             entry = {'index': index, 'jobs': jobs, 'restoreAndPrepareSeconds': time.monotonic() - preparation_started}
             with workspace_lock(root):
+                print(f'Trial {index}/4: audit the complete mixed dependency plan before compilation', flush=True)
+                audit_mixed_before_compile(root, trial, mixed_targets)
                 print(f'Trial {index}/4: {len(targets)} fixed C++ tasks, -j{jobs}', flush=True)
                 entry['cxx'] = run_phase(root, trial, 'cxx', jobs, targets, (), prepared, 20 * 60)
+                write_json(trial / 'partial-result.json', entry)
                 # Same post-C++ state each time; relink already-built Blink DLLs
                 # alongside twelve identical C++ tasks. Original link pool stays 2.
-                reset_outputs(output, [*targets[:12], *LINKS])
+                reset_outputs(output, [*mixed_targets, *LINKS])
                 print(f'Trial {index}/4: mixed C++ / Blink link qualification, -j{jobs}', flush=True)
-                entry['mixed'] = run_phase(root, trial, 'mixed', jobs, targets[:12], LINKS, prepared, 10 * 60)
+                entry['mixed'] = run_phase(root, trial, 'mixed', jobs, mixed_targets, LINKS, prepared, 10 * 60)
                 verify_samples(root, manifest['samples'])
             report['trials'].append(entry)
             write_json(evidence / 'benchmark.json', report)
