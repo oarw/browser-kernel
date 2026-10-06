@@ -1,6 +1,7 @@
 """Bounded ABBA experiment on a trusted checkpoint, never a production continuation."""
 import argparse
 from collections import defaultdict
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -102,7 +103,8 @@ def audit_commands(text, count):
     if len(commands) != count:
         raise RuntimeError('Verbose command count does not match the C++ task list')
     for command in commands:
-        if (not re.match(r'^"?(?:\.\./)+third_party/llvm-build/Release\+Asserts/bin/clang-cl\.exe"? ', command)
+        executable = command.split(' ', 1)[0].strip('"').replace('\\', '/')
+        if (executable != '../../third_party/llvm-build/Release+Asserts/bin/clang-cl.exe'
                 or not re.search(r'(?:^| )/c ', command)
                 or re.search(r'(?:^| )/Yc', command)
                 or re.search(r'[&|<>\r\n]', command)):
@@ -234,35 +236,62 @@ def compare(trials):
     return result
 
 
+def previous_trial(evidence, owner, expected_owner, receipt, trial):
+    report = json.loads((evidence / 'benchmark.json').read_text(encoding='utf8'))
+    if (json.loads(owner.read_text(encoding='utf8')) != expected_owner
+            or report['context'] != expected_owner['context'] or report['source'] != receipt
+            or report['policy'] != POLICY or report['status'] != 'running'
+            or len(report['trials']) != trial - 1
+            or [item['index'] for item in report['trials']] != list(range(1, trial))
+            or [item['jobs'] for item in report['trials']] != list(ORDER[:trial - 1])):
+        raise RuntimeError('Previous trial identity, order or status does not match this continuation')
+    tasks = json.loads((evidence / 'tasks.json').read_text(encoding='utf8'))
+    targets = tasks['cxx']
+    if (len(targets) != POLICY['maxCxxTargets'] or len(set(targets)) != len(targets)
+            or hashlib.sha256('\n'.join(targets).encode()).hexdigest() != tasks['sha256']):
+        raise RuntimeError('Fixed task list changed between trials')
+    baseline = json.loads((evidence / 'baseline.json').read_text(encoding='utf8'))
+    return report, targets, baseline
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', required=True, type=Path)
     parser.add_argument('--trusted-source', required=True, type=Path)
     parser.add_argument('--manifest-sha256', required=True)
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--trial', type=int, choices=range(1, 5),
+                        help='Run one sequential trial on the same runner; omitted runs all four')
     args = parser.parse_args()
     if (os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true'
             or os.environ.get('GITHUB_REF') != 'refs/heads/main'):
         parser.error('Run this bounded experiment in its main-branch Windows Actions workflow')
     root = Path(r'D:\fb-kernel')
     evidence = args.output.resolve()
-    evidence.mkdir(parents=True, exist_ok=False)
+    continuing = args.trial is not None and args.trial > 1
+    if not continuing:
+        evidence.mkdir(parents=True, exist_ok=False)
     receipt = json.loads(args.trusted_source.read_text(encoding='utf8'))
     owner = root.parent / 'fb-kernel-benchmark-owner.json'
     expected_owner = {'workspace': str(root), 'context': context()}
-    if root.exists() or owner.exists():
-        raise RuntimeError('Benchmark requires a fresh runner and absent workspace')
-    write_json(owner, expected_owner)
-    report = {'schemaVersion': 1, 'startedAt': now(), 'status': 'running', 'context': context(),
-              'source': receipt, 'policy': POLICY, 'order': ORDER, 'trials': [],
-              'browserCompiled': False, 'browserAcceptancePassed': False}
+    if continuing:
+        report, targets, baseline = previous_trial(evidence, owner, expected_owner, receipt, args.trial)
+    else:
+        if root.exists() or owner.exists():
+            raise RuntimeError('Benchmark requires a fresh runner and absent workspace')
+        write_json(owner, expected_owner)
+        report = {'schemaVersion': 1, 'startedAt': now(), 'status': 'running', 'context': context(),
+                  'source': receipt, 'policy': POLICY, 'order': ORDER, 'trials': [],
+                  'browserCompiled': False, 'browserAcceptancePassed': False}
+        targets = None
+        baseline = None
     write_json(evidence / 'benchmark.json', report)
-    started = time.monotonic()
-    targets = None
-    baseline = None
+    started_at = datetime.fromisoformat(report['startedAt'])
     try:
         for index, jobs in enumerate(ORDER, 1):
-            if time.monotonic() - started > 140 * 60:
+            if args.trial is not None and index != args.trial:
+                continue
+            if (datetime.now(timezone.utc) - started_at).total_seconds() > 140 * 60:
                 raise TimeoutError('Insufficient time for another complete benchmark trial')
             trial = evidence / f'trial-{index}-j{jobs}'
             trial.mkdir()
@@ -317,12 +346,15 @@ def main():
             write_json(evidence / 'benchmark.json', report)
             print(f'Trial {index}/4 complete: C++ {entry["cxx"]["elapsedSeconds"]:.1f}s, '
                   f'mixed {entry["mixed"]["elapsedSeconds"]:.1f}s', flush=True)
-        report.update(status='completed', comparison=compare(report['trials']))
+        if len(report['trials']) == 4:
+            report.update(status='completed', comparison=compare(report['trials']))
     except BaseException as error:
         report.update(status='failed', error=f'{type(error).__name__}: {error}')
         raise
     finally:
-        report.update(finishedAt=now(), elapsedSeconds=time.monotonic() - started)
+        report.update(updatedAt=now(), elapsedSeconds=(datetime.now(timezone.utc) - started_at).total_seconds())
+        if report['status'] != 'running':
+            report['finishedAt'] = now()
         write_json(evidence / 'benchmark.json', report)
         if os.environ.get('GITHUB_STEP_SUMMARY'):
             with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf8') as summary:
