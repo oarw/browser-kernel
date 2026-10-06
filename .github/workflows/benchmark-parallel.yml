@@ -64,11 +64,47 @@ jobs:
           artifact-ids: ${{ inputs.source_artifact }}
           merge-multiple: true
           path: D:\benchmark-source
-      - name: Run bounded ABBA experiment
-        timeout-minutes: 180
+      - name: Trial 1 - three jobs
+        timeout-minutes: 45
         env:
           MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
-        run: python -u kernel/benchmark_parallel.py --source D:\benchmark-source --trusted-source release/trusted-source.json --manifest-sha256 "$env:MANIFEST_SHA256" --output release/benchmark
+        run: python -u kernel/benchmark_parallel.py --source D:\benchmark-source --trusted-source release/trusted-source.json --manifest-sha256 "$env:MANIFEST_SHA256" --output release/benchmark --trial 1
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        timeout-minutes: 5
+        with:
+          name: benchmark-${{ github.run_id }}-${{ github.run_attempt }}-after-trial-1
+          path: release/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Trial 2 - four jobs
+        timeout-minutes: 45
+        env:
+          MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+        run: python -u kernel/benchmark_parallel.py --source D:\benchmark-source --trusted-source release/trusted-source.json --manifest-sha256 "$env:MANIFEST_SHA256" --output release/benchmark --trial 2
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        timeout-minutes: 5
+        with:
+          name: benchmark-${{ github.run_id }}-${{ github.run_attempt }}-after-trial-2
+          path: release/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Trial 3 - four jobs
+        timeout-minutes: 45
+        env:
+          MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+        run: python -u kernel/benchmark_parallel.py --source D:\benchmark-source --trusted-source release/trusted-source.json --manifest-sha256 "$env:MANIFEST_SHA256" --output release/benchmark --trial 3
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        timeout-minutes: 5
+        with:
+          name: benchmark-${{ github.run_id }}-${{ github.run_attempt }}-after-trial-3
+          path: release/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Trial 4 - three jobs
+        timeout-minutes: 45
+        env:
+          MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+        run: python -u kernel/benchmark_parallel.py --source D:\benchmark-source --trusted-source release/trusted-source.json --manifest-sha256 "$env:MANIFEST_SHA256" --output release/benchmark --trial 4
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         timeout-minutes: 5

@@ -1,4 +1,5 @@
 import json
+import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -7,8 +8,8 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from benchmark_parallel import (ORDER, audit_commands, audit_plan, checked_output,
-                                compare, remove_owned_workspace, reset_outputs, write_wrapper)
+from benchmark_parallel import (ORDER, POLICY, audit_commands, audit_plan, checked_output,
+                                compare, previous_trial, remove_owned_workspace, reset_outputs, write_wrapper)
 from benchmark_resources import FastSampler, guard_reason, run_guarded
 from build_support import GIB, resource_requirements
 
@@ -29,6 +30,13 @@ class BenchmarkTests(unittest.TestCase):
         for bad in (command + ' /Ycfoo.h', command + ' & echo unsafe', command.replace('clang-cl.exe', 'other.exe')):
             with self.subTest(bad=bad), self.assertRaises(RuntimeError):
                 audit_commands(bad, 1)
+
+    def test_recorded_chromium_windows_command_is_accepted(self):
+        path = Path(__file__).parent / 'fixtures/benchmark-clang-command.txt'
+        command = path.read_text(encoding='utf8')
+        audit_commands(command, 1)
+        with self.assertRaises(RuntimeError):
+            audit_commands(command.replace('clang-cl.exe', 'unexpected.exe'), 1)
 
     def test_real_ninja_wrapper_has_exact_selected_tasks(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -81,6 +89,31 @@ class BenchmarkTests(unittest.TestCase):
         trials[1]['cxx']['detailedSampleErrors'] = 1
         with self.assertRaises(RuntimeError):
             compare(trials)
+
+    def test_sequential_steps_require_same_run_successful_predecessor_and_task_list(self):
+        with tempfile.TemporaryDirectory() as directory:
+            evidence = Path(directory)
+            owner = evidence / 'owner.json'
+            expected = {'workspace': 'fixture', 'context': {'GITHUB_RUN_ID': '123'}}
+            receipt = {'artifactId': 456}
+            report = dict(context=expected['context'], source=receipt, policy=POLICY,
+                          status='running', trials=[dict(index=1, jobs=3)])
+            tasks = [f'obj/a{i}.obj' for i in range(240)]
+            owner.write_text(json.dumps(expected))
+            (evidence / 'benchmark.json').write_text(json.dumps(report))
+            (evidence / 'tasks.json').write_text(json.dumps(
+                {'cxx': tasks, 'sha256': hashlib.sha256('\n'.join(tasks).encode()).hexdigest()}))
+            (evidence / 'baseline.json').write_text('{}')
+            self.assertEqual(previous_trial(evidence, owner, expected, receipt, 2)[1], tasks)
+            for wrong in (dict(report, status='failed'), dict(report, trials=[]),
+                          dict(report, context={'GITHUB_RUN_ID': '999'})):
+                (evidence / 'benchmark.json').write_text(json.dumps(wrong))
+                with self.assertRaises(RuntimeError):
+                    previous_trial(evidence, owner, expected, receipt, 2)
+            (evidence / 'benchmark.json').write_text(json.dumps(report))
+            (evidence / 'tasks.json').write_text(json.dumps({'cxx': tasks, 'sha256': 'changed'}))
+            with self.assertRaisesRegex(RuntimeError, 'task list changed'):
+                previous_trial(evidence, owner, expected, receipt, 2)
 
     def test_compiler_failure_keeps_log_and_cannot_become_success(self):
         sample = dict(availableMemoryBytes=8 * GIB, committedBytes=5 * GIB,
