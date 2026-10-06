@@ -1,0 +1,36 @@
+name: auto-package-completed-build
+on:
+  workflow_run:
+    workflows: [build-kernel]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      source_run:
+        description: 'Retry automatic packaging/release for a successful build run'
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: auto-package-${{ github.event.workflow_run.id || inputs.source_run }}
+  cancel-in-progress: false
+jobs:
+  dispatch:
+    if: github.event.repository.private == false && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Dispatch packaging only after complete compilation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ github.event.workflow_run.id || inputs.source_run }}
+        run: python kernel/auto_package.py --run-id "$SOURCE_RUN" --output release/source-state

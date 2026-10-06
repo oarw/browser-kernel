@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import re
+import subprocess
 import zipfile
 from pathlib import Path
 
@@ -10,6 +11,21 @@ from pathlib import Path
 def digest(path):
     with path.open('rb') as stream:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def next_version(chromium, tags):
+    if not re.fullmatch(r'\d+\.\d+\.\d+\.\d+', chromium):
+        raise ValueError('Invalid Chromium version')
+    revisions = []
+    for tag in tags:
+        match = re.fullmatch(re.escape(chromium) + r'-fb\.(\d+)(?:-pre\.(\d+))?', tag)
+        if match:
+            revisions.append((int(match[1]), int(match[2]) if match[2] else None))
+    revision = max((item[0] for item in revisions), default=1)
+    if (revision, None) in revisions:
+        revision += 1
+    number = max((pre for rev, pre in revisions if rev == revision and pre is not None), default=0) + 1
+    return f'{chromium}-fb.{revision}-pre.{number}'
 
 
 def prepare(directory, version, expected_sha):
@@ -53,7 +69,20 @@ def prepare(directory, version, expected_sha):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--directory', type=Path, required=True)
-    parser.add_argument('--version', required=True)
-    parser.add_argument('--sha256', required=True)
+    parser.add_argument('--version')
+    parser.add_argument('--sha256')
+    parser.add_argument('--auto', action='store_true')
     args = parser.parse_args()
-    print(json.dumps(prepare(args.directory, args.version, args.sha256), indent=2))
+    if args.auto:
+        tags = subprocess.check_output(['gh', 'api', '--paginate', 'repos/oarw/browser-kernel/tags?per_page=100', '--jq', '.[].name'], text=True).splitlines()
+        with zipfile.ZipFile(args.directory / 'browser-kernel-windows-x64.zip') as reader:
+            versions = [name.removesuffix('.manifest') for name in reader.namelist() if re.fullmatch(r'\d+\.\d+\.\d+\.\d+\.manifest', name)]
+        if len(versions) != 1:
+            raise ValueError('Expected one Chromium version manifest')
+        args.version = next_version(versions[0], tags)
+        args.sha256 = json.loads((args.directory / 'package-report.json').read_text(encoding='utf8'))['archiveSha256']
+    if not args.version or not args.sha256:
+        parser.error('Provide --version and --sha256, or --auto')
+    entry = prepare(args.directory, args.version, args.sha256)
+    (args.directory / 'release-version.txt').write_text(args.version, encoding='utf8')
+    print(json.dumps(entry, indent=2))
