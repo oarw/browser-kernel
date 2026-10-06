@@ -89,14 +89,23 @@ def run_measured(command, root, output, interval=30, sampler=sample_resources):
         write_json(output / 'performance.json', report)
 
 
+def measured_command(root, output, jobs, minutes):
+    if jobs == 4:
+        return [sys.executable, '-u', str(Path(__file__).with_name('guarded_continuation.py')),
+                '--work-dir', str(root), '--output', str(output), '--build-timeout-minutes', str(minutes)]
+    if jobs not in (2, 3):
+        raise ValueError('Expected two, three or four jobs')
+    return [sys.executable, '-u', str(Path(__file__).with_name('build_windows.py')),
+            '--work-dir', str(root), '--jobs', str(jobs),
+            '--build-timeout-minutes', str(minutes), '--checkpoint-on-timeout']
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work-dir', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--jobs', type=int, choices=(2, 3), default=3)
+    parser.add_argument('--jobs', type=int, choices=(2, 3, 4), default=3)
     parser.add_argument('--build-timeout-minutes', type=int, required=True)
     args = parser.parse_args()
-    command = [sys.executable, '-u', str(Path(__file__).with_name('build_windows.py')),
-               '--work-dir', str(args.work_dir), '--jobs', str(args.jobs),
-               '--build-timeout-minutes', str(args.build_timeout_minutes), '--checkpoint-on-timeout']
+    command = measured_command(args.work_dir, args.output, args.jobs, args.build_timeout_minutes)
     raise SystemExit(run_measured(command, args.work_dir, args.output))
