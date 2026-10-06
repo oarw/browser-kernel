@@ -2,6 +2,10 @@ name: package-candidate
 on:
   workflow_dispatch:
     inputs:
+      auto_publish:
+        description: 'Publish the next available pre-release after packaging and diagnostic collection'
+        type: boolean
+        default: false
       source_run:
         required: true
         type: string
@@ -19,13 +23,14 @@ on:
         required: true
         type: string
 permissions:
-  contents: read
+  contents: write
   actions: read
 concurrency:
-  group: candidate-packaging
+  group: kernel-release
   cancel-in-progress: false
 jobs:
   candidate:
+    if: github.ref == 'refs/heads/main' && github.event.repository.private == false
     runs-on: windows-2022
     timeout-minutes: 60
     env:
@@ -89,3 +94,14 @@ jobs:
             release/candidate/package-report.json
           retention-days: 90
           if-no-files-found: error
+      - name: Select next candidate version and publish Release
+        if: inputs.auto_publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          python kernel/publish_candidate.py --directory release/candidate --auto
+          if ($LASTEXITCODE -ne 0) { throw 'Release metadata verification failed' }
+          $version = (Get-Content -Raw release/candidate/release-version.txt).Trim()
+          gh release create "$version" release/candidate/browser-kernel-windows-x64.zip release/candidate/kernel.json release/candidate/package-report.json release/candidate/SHA256SUMS.txt --target "$env:GITHUB_SHA" --title "FingerBrowser kernel $version" --notes-file release/candidate/release-notes.md --prerelease --latest=false
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }
