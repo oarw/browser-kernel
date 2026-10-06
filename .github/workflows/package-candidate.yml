@@ -1,0 +1,91 @@
+name: package-candidate
+on:
+  workflow_dispatch:
+    inputs:
+      source_run:
+        required: true
+        type: string
+      source_attempt:
+        required: true
+        default: '1'
+        type: string
+      source_commit:
+        required: true
+        type: string
+      source_artifact:
+        required: true
+        type: string
+      manifest_sha256:
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: candidate-packaging
+  cancel-in-progress: false
+jobs:
+  candidate:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      PYTHONUTF8: '1'
+      SOURCE_RUN: ${{ inputs.source_run }}
+      SOURCE_ATTEMPT: ${{ inputs.source_attempt }}
+      SOURCE_COMMIT: ${{ inputs.source_commit }}
+      SOURCE_ARTIFACT: ${{ inputs.source_artifact }}
+      MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify completed build provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python kernel/checkpoint_source.py --run-id "$env:SOURCE_RUN" --attempt "$env:SOURCE_ATTEMPT" --commit "$env:SOURCE_COMMIT" --artifact-id "$env:SOURCE_ARTIFACT" --manifest-sha256 "$env:MANIFEST_SHA256" --output release/trusted-source.json
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        timeout-minutes: 20
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.source_run }}
+          artifact-ids: ${{ inputs.source_artifact }}
+          merge-multiple: true
+          path: release/source
+      - name: Extract and package verified runtime
+        run: python kernel/package_candidate.py --source release/source --output release/candidate --manifest-sha256 "$env:MANIFEST_SHA256" --commit "$env:SOURCE_COMMIT" --run-id "$env:SOURCE_RUN" --attempt "$env:SOURCE_ATTEMPT"
+      # These commands collect diagnostics. Their success is NOT full acceptance.
+      - name: Record candidate and no-noise control
+        shell: pwsh
+        run: |
+          node scripts/verify-kernel.mjs --executable release/candidate/runtime/chrome.exe --record-only --output release/evidence/candidate
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate collection failed' }
+          node scripts/verify-kernel.mjs --executable release/candidate/runtime/chrome.exe --without-canvas-noise --record-only --output release/evidence/control
+          if ($LASTEXITCODE -ne 0) { throw 'Control collection failed' }
+      - name: Upload experimental runtime and checksums
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: candidate-runtime-${{ github.run_id }}
+          path: |
+            release/candidate/browser-kernel-windows-x64.zip
+            release/candidate/SHA256SUMS.txt
+            release/candidate/package-report.json
+          compression-level: 0
+          retention-days: 90
+          if-no-files-found: error
+      - name: Upload acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: candidate-evidence-${{ github.run_id }}
+          path: |
+            release/evidence/
+            release/trusted-source.json
+            release/candidate/package-report.json
+          retention-days: 90
+          if-no-files-found: error

@@ -21,10 +21,25 @@ export async function collectKernelProbe() {
     ctx.fillStyle = '#1c4260'; ctx.font = '18px Arial'; ctx.fillText('FingerBrowser 012345', 7, 25)
     ctx.fillStyle = '#b84821'; ctx.fillRect(11, 40, 137, 13)
     result.canvas = { hash: await hash(ctx.getImageData(0, 0, 240, 80).data), textWidth: ctx.measureText('FingerBrowser 012345').width }
+    const metricFields = ['width', 'actualBoundingBoxLeft', 'actualBoundingBoxRight', 'actualBoundingBoxAscent', 'actualBoundingBoxDescent', 'fontBoundingBoxAscent', 'fontBoundingBoxDescent', 'emHeightAscent', 'emHeightDescent', 'hangingBaseline', 'alphabeticBaseline', 'ideographicBaseline']
+    const measure = (context) => {
+      // Generic font selection depends on language. Explicitly align document
+      // and worker canvas contexts before comparing their native metrics.
+      if ('lang' in context) context.lang = navigator.language
+      const samples = []
+      for (const family of ['Arial', 'Times New Roman', 'monospace']) for (const size of [12, 24]) for (const text of ['', 'FingerBrowser 012345', '中文测试', 'Ag ij !@#']) {
+        context.font = `${size}px ${family}`
+        const metrics = context.measureText(text)
+        samples.push({ font: context.font, text, values: Object.fromEntries(metricFields.filter((field) => typeof metrics[field] === 'number').map((field) => [field, metrics[field]])) })
+      }
+      return samples
+    }
+    result.textMetrics = { offscreen: measure(ctx) }
     if (typeof document !== 'undefined') {
       const domContext = document.createElement('canvas').getContext('2d')
       domContext.font = '18px Arial'
       result.domTextWidth = domContext.measureText('FingerBrowser 012345').width
+      result.textMetrics.dom = measure(domContext)
     }
   } catch (error) { result.canvas = { error: error.message } }
   try {

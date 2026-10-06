@@ -123,7 +123,7 @@ async function captureRun(executable, scenario, kind, directory, origin, crossOr
   const args = [...buildArgs({ fingerprint: scenario.fingerprint, startupUrl: `${origin}/?token=${token}`, proxy: { enabled: false } }, directory, '', { width: 1100, height: 760, x: 40, y: 40 }), ...report.harness.instrumentation]
   const log = createWriteStream(join(output, `${scenario.id}-${kind}.log`))
   const started = Date.now()
-  const child = spawn(executable, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
+  const child = spawn(executable, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: false })
   child.stdout.pipe(log, { end: false }); child.stderr.pipe(log, { end: false })
   let exited = false, spawnError
   const stopped = new Promise((resolve) => {
