@@ -6,6 +6,10 @@ import re
 import subprocess
 import zipfile
 from pathlib import Path
+try:
+    from .release_notes import generate
+except ImportError:
+    from release_notes import generate
 
 
 def digest(path):
@@ -84,5 +88,7 @@ if __name__ == '__main__':
     if not args.version or not args.sha256:
         parser.error('Provide --version and --sha256, or --auto')
     entry = prepare(args.directory, args.version, args.sha256)
+    report = json.loads((args.directory / 'package-report.json').read_text(encoding='utf8'))
+    (args.directory / 'release-notes.md').write_text(generate(args.version, report), encoding='utf8')
     (args.directory / 'release-version.txt').write_text(args.version, encoding='utf8')
     print(json.dumps(entry, indent=2))
