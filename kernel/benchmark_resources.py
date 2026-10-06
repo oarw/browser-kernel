@@ -1,4 +1,4 @@
-"""Resource guards for bounded experiments; production build policy is unchanged."""
+"""Resource counters for bounded experiments and opt-in guarded continuations."""
 import ctypes
 import json
 import os
@@ -58,11 +58,15 @@ def guard_reason(sample, low_count):
 def stop_tree(process):
     if process.poll() is None:
         if os.name == 'nt':
-            subprocess.run(['taskkill', '/pid', str(process.pid), '/t', '/f'],
-                           capture_output=True, timeout=20, creationflags=subprocess.CREATE_NO_WINDOW)
+            result = subprocess.run(['taskkill', '/pid', str(process.pid), '/t', '/f'],
+                                    capture_output=True, timeout=20, creationflags=subprocess.CREATE_NO_WINDOW)
+            stopped = result.returncode == 0
         else:
             process.kill()
+            stopped = True
         process.wait(timeout=20)
+        return stopped
+    return False
 
 
 def run_guarded(command, cwd, output, timeout_seconds, sampler=None, detailed=True):

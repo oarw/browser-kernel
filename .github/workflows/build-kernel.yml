@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
     inputs:
       compile_jobs:
-        description: 'Ninja parallelism (2 is the fallback)'
+        description: 'Ninja parallelism (4 uses resource guards; 3/2 are fallbacks)'
         type: choice
-        options: ['3', '2']
+        options: ['4', '3', '2']
         default: '3'
       save_minutes:
         description: 'Checkpoint reserve (50 is the fallback)'
@@ -82,7 +82,7 @@ jobs:
         run: python kernel/checkpoint_source.py --run-id "$env:SOURCE_RUN" --attempt "$env:SOURCE_ATTEMPT" --commit "$env:SOURCE_COMMIT" --artifact-id "$env:SOURCE_ARTIFACT" --manifest-sha256 "$env:MANIFEST_SHA256" --output release/trusted-source.json
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         if: inputs.source_run != ''
-        timeout-minutes: 15
+        timeout-minutes: 20
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.source_run }}
@@ -156,7 +156,7 @@ jobs:
           foreach ($path in @('release/budget.json', 'release/preflight.json', 'release/checkpoint/manifest.json', 'release/trusted-source.json', 'release/resume-progress.json', 'release/pch-recovery.json')) {
             if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination release/state }
           }
-          foreach ($name in @('build-state.json', 'build-result.json', 'prepared.json', 'preflight-prepare.json', 'preflight-build.json', 'migration.json', 'link-checks.json')) {
+          foreach ($name in @('build-state.json', 'build-result.json', 'prepared.json', 'preflight-prepare.json', 'preflight-build.json', 'preflight-four-jobs.json', 'migration.json', 'link-checks.json')) {
             $path = Join-Path 'D:\fb-kernel' $name
             if (Test-Path -LiteralPath $path) { Copy-Item -LiteralPath $path -Destination release/state }
           }
