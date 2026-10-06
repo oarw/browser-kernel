@@ -1,0 +1,73 @@
+name: publish-candidate
+on:
+  workflow_dispatch:
+    inputs:
+      package_run:
+        description: 'Successful package-candidate run on main'
+        required: true
+        type: string
+      artifact_id:
+        description: 'Exact candidate-runtime artifact ID'
+        required: true
+        type: string
+      version:
+        description: 'Chromium version with -fb.N-pre.N suffix'
+        required: true
+        type: string
+      archive_sha256:
+        description: 'Reviewed runtime ZIP SHA-256'
+        required: true
+        type: string
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: kernel-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PACKAGE_RUN: ${{ inputs.package_run }}
+      ARTIFACT_ID: ${{ inputs.artifact_id }}
+      VERSION: ${{ inputs.version }}
+      ARCHIVE_SHA256: ${{ inputs.archive_sha256 }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Verify packaging run and artifact
+        shell: bash
+        run: |
+          [[ "$PACKAGE_RUN" =~ ^[0-9]+$ && "$ARTIFACT_ID" =~ ^[0-9]+$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PACKAGE_RUN" > run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID" > artifact.json
+          python - <<'PY'
+          import json, os
+          run = json.load(open('run.json'))
+          artifact = json.load(open('artifact.json'))
+          assert run['conclusion'] == 'success' and run['head_branch'] == 'main'
+          assert run['event'] == 'workflow_dispatch' and run['path'] == '.github/workflows/package-candidate.yml'
+          assert run['head_repository']['full_name'] == os.environ['GITHUB_REPOSITORY']
+          assert str(artifact['workflow_run']['id']) == os.environ['PACKAGE_RUN'] and not artifact['expired']
+          assert artifact['name'] == 'candidate-runtime-' + os.environ['PACKAGE_RUN']
+          PY
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.package_run }}
+          artifact-ids: ${{ inputs.artifact_id }}
+          merge-multiple: true
+          path: release/candidate
+      - name: Verify runtime and prepare release metadata
+        run: python kernel/publish_candidate.py --directory release/candidate --version "$VERSION" --sha256 "$ARCHIVE_SHA256"
+      - name: Publish immutable pre-release
+        shell: bash
+        run: |
+          gh release create "$VERSION" release/candidate/browser-kernel-windows-x64.zip release/candidate/kernel.json release/candidate/package-report.json release/candidate/SHA256SUMS.txt --target "$GITHUB_SHA" --title "FingerBrowser kernel $VERSION" --notes-file release/candidate/release-notes.md --prerelease --latest=false
