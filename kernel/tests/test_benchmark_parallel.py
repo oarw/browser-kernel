@@ -1,15 +1,19 @@
 import json
 import os
+import stat
+import shutil
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from benchmark_parallel import (LINKS, ORDER, POLICY, audit_commands, audit_mixed_before_compile,
                                 audit_plan, checked_output, choose_mixed_targets, compare, previous_trial,
-                                remove_owned_workspace, reset_outputs, task_digest, write_wrapper)
+                                probe_readonly_reset, remove_owned_workspace, remove_readonly_tree,
+                                reset_outputs, task_digest, write_wrapper)
 from benchmark_resources import FastSampler, guard_reason, run_guarded
 from build_support import GIB, resource_requirements
 
@@ -128,6 +132,57 @@ class BenchmarkTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 remove_owned_workspace(output, output / 'missing-owner.json', {})
             self.assertTrue(kept.exists())
+
+    def test_reset_removes_a_real_git_pack_with_readonly_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'workspace'
+            root.mkdir()
+            def git(*args):
+                return subprocess.run(['git', '-C', str(root), *args], check=True, capture_output=True, text=True)
+            git('init')
+            (root / 'fixture.txt').write_text('real packed repository')
+            git('add', 'fixture.txt')
+            git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-m', 'fixture')
+            git('gc', '--prune=now')
+            packed = list((root / '.git/objects/pack').glob('*.idx'))
+            self.assertTrue(packed)
+            for path in packed:
+                os.chmod(path, stat.S_IREAD)
+            if os.name == 'nt':
+                with self.assertRaises(PermissionError):
+                    shutil.rmtree(root)
+            remove_readonly_tree(root)
+            self.assertFalse(root.exists())
+            self.assertEqual(probe_readonly_reset(Path(directory))['status'], 'passed')
+
+    def test_readonly_retry_cannot_escape_the_authorized_tree(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'owned'
+            root.mkdir()
+            external = Path(directory) / 'external.idx'
+            external.write_bytes(b'preserve')
+            error = PermissionError('fixture access denied')
+            def fake_rmtree(_root, onexc):
+                onexc(os.unlink, str(external), error)
+            with patch('benchmark_parallel.shutil.rmtree', side_effect=fake_rmtree), \
+                    patch('benchmark_parallel.os.chmod') as chmod:
+                with self.assertRaises(PermissionError):
+                    remove_readonly_tree(root)
+                chmod.assert_not_called()
+            self.assertEqual(external.read_bytes(), b'preserve')
+
+    def test_unrelated_access_denial_is_not_hidden_or_repermissioned(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            regular = root / 'regular.idx'
+            regular.write_bytes(b'not readonly')
+            def fake_rmtree(_root, onexc):
+                onexc(os.unlink, str(regular), PermissionError('unrelated ACL denial'))
+            with patch('benchmark_parallel.shutil.rmtree', side_effect=fake_rmtree), \
+                    patch('benchmark_parallel.os.chmod') as chmod:
+                with self.assertRaisesRegex(PermissionError, 'ACL denial'):
+                    remove_readonly_tree(root)
+                chmod.assert_not_called()
 
     def test_guard_requires_persistent_low_memory_but_stops_on_hard_floor(self):
         sample = dict(availableMemoryBytes=3 * GIB, commitLimitBytes=20 * GIB,
