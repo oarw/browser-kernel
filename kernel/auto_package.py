@@ -10,7 +10,7 @@ REPO = 'oarw/browser-kernel'
 
 
 def api(path):
-    return json.loads(subprocess.check_output(['gh', 'api', f'repos/{REPO}/{path}'], text=True))
+    return json.loads(subprocess.check_output(['gh', 'api', f'repos/{REPO}' + (f'/{path}' if path else '')], text=True))
 
 
 def completed(manifest, state, run):
@@ -26,7 +26,7 @@ def completed(manifest, state, run):
     return True
 
 
-def dispatch(run_id, output):
+def dispatch(run_id, output, dry_run=False):
     if not re.fullmatch(r'[1-9][0-9]*', run_id):
         raise ValueError('Invalid run ID')
     repository, run = api(''), api(f'actions/runs/{run_id}')
@@ -55,7 +55,8 @@ def dispatch(run_id, output):
                   auto_publish='true')
     for key, value in inputs.items():
         command.extend(['-f', f'{key}={value}'])
-    subprocess.run(command, check=True)
+    if not dry_run:
+        subprocess.run(command, check=True)
     print(json.dumps(inputs, indent=2))
 
 
@@ -63,5 +64,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--run-id', required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args()
-    dispatch(args.run_id, args.output)
+    dispatch(args.run_id, args.output, args.dry_run)
