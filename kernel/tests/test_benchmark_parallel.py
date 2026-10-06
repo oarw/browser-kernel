@@ -1,5 +1,4 @@
 import json
-import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -8,8 +7,9 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from benchmark_parallel import (ORDER, POLICY, audit_commands, audit_plan, checked_output,
-                                compare, previous_trial, remove_owned_workspace, reset_outputs, write_wrapper)
+from benchmark_parallel import (LINKS, ORDER, POLICY, audit_commands, audit_mixed_before_compile,
+                                audit_plan, checked_output, choose_mixed_targets, compare, previous_trial,
+                                remove_owned_workspace, reset_outputs, task_digest, write_wrapper)
 from benchmark_resources import FastSampler, guard_reason, run_guarded
 from build_support import GIB, resource_requirements
 
@@ -48,6 +48,71 @@ class BenchmarkTests(unittest.TestCase):
             result = subprocess.run(['ninja', '-n', '-f', 'benchmark-only.ninja', '__bounded_benchmark__'],
                                     cwd=output, capture_output=True, text=True, check=True)
             audit_plan(result.stdout, ['obj/a.obj', 'obj/b.obj'])
+
+    def test_real_ninja_blink_objects_avoid_downstream_ui_generator(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            cxx = [f'obj/blink-{i}.obj' for i in range(12)]
+            graph = ('rule cxx\n  command = echo unused\n  description = CXX $out\n'
+                     'rule link\n  command = echo unused\n  description = LINK(DLL) $out\n'
+                     'rule generate\n  command = echo unused\n  description = ACTION downstream-snapshot\n')
+            graph += ''.join(f'build {name}: cxx\n' for name in cxx)
+            for index, name in enumerate(LINKS):
+                graph += f'build {name} {name}.lib {name}.pdb: link ' + ' '.join(cxx[index * 4:index * 4 + 4]) + '\n'
+            graph += 'build snapshot.bin: generate blink_controller.dll\nbuild obj/ui.obj: cxx | snapshot.bin\n'
+            (output / 'build.ninja').write_text(graph)
+            write_wrapper(output, [*cxx, *LINKS])
+            def plan():
+                return subprocess.run(['ninja', '-n', '-f', 'benchmark-only.ninja', '__bounded_benchmark__'],
+                                      cwd=output, capture_output=True, text=True, check=True).stdout
+            audit_plan(plan(), cxx, LINKS)
+            write_wrapper(output, ['obj/ui.obj', *LINKS])
+            self.assertIn('ACTION downstream-snapshot', plan())
+            with self.assertRaises(RuntimeError):
+                audit_plan(plan(), ['obj/ui.obj'], LINKS)
+
+    def test_early_mixed_audit_restores_outputs_and_ninja_state_on_rejection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / 'windows/build/src/out/Default'
+            output.mkdir(parents=True)
+            trial = root / 'report'
+            trial.mkdir()
+            cxx = ['obj/a.obj']
+            original = {}
+            for name in [*cxx, *LINKS, '.ninja_log', '.ninja_deps']:
+                path = output / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(name.encode())
+                original[name] = (path.read_bytes(), path.stat().st_mtime_ns)
+            def rejected_query(*_args):
+                self.assertFalse((output / cxx[0]).exists())
+                (output / '.ninja_log').write_text('simulated recompact')
+                return '[1/1] ACTION unexpected-generator\n'
+            with self.assertRaisesRegex(RuntimeError, 'already prepared'):
+                audit_mixed_before_compile(root, trial, cxx, query_fn=rejected_query)
+            for name, expected in original.items():
+                path = output / name
+                self.assertEqual((path.read_bytes(), path.stat().st_mtime_ns), expected)
+            report = json.loads((trial / 'mixed-preflight.json').read_text())
+            self.assertEqual(report['status'], 'failed')
+            self.assertTrue(report['restored'])
+
+    def test_mixed_selection_is_internal_existing_and_excludes_pch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            lines = ['# ninja log v5']
+            for group in ('core/core', 'modules/webaudio/webaudio', 'controller/controller'):
+                for index, name in enumerate(['precompile.cc.obj', 'a.obj', 'b.obj', 'c.obj', 'd.obj']):
+                    relative = 'obj/third_party/blink/renderer/' + group + '/' + name
+                    path = output / relative
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(b'fixture')
+                    lines.append(f'0\t{index + 1}\t1\t{relative}\thash')
+            (output / '.ninja_log').write_text('\n'.join(lines))
+            selected = choose_mixed_targets(output)
+            self.assertEqual(len(selected), 12)
+            self.assertTrue(all('precompile' not in name for name in selected))
 
     def test_deletion_is_confined_and_checks_all_outputs_first(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -98,20 +163,21 @@ class BenchmarkTests(unittest.TestCase):
             receipt = {'artifactId': 456}
             report = dict(context=expected['context'], source=receipt, policy=POLICY,
                           status='running', trials=[dict(index=1, jobs=3)])
-            tasks = [f'obj/a{i}.obj' for i in range(240)]
+            targets = [f'obj/a{i}.obj' for i in range(240)]
+            tasks = {'cxx': targets, 'mixedCxx': [f'obj/blink{i}.obj' for i in range(12)], 'links': list(LINKS)}
             owner.write_text(json.dumps(expected))
             (evidence / 'benchmark.json').write_text(json.dumps(report))
-            (evidence / 'tasks.json').write_text(json.dumps(
-                {'cxx': tasks, 'sha256': hashlib.sha256('\n'.join(tasks).encode()).hexdigest()}))
+            (evidence / 'tasks.json').write_text(json.dumps({**tasks, 'sha256': task_digest(tasks)}))
             (evidence / 'baseline.json').write_text('{}')
-            self.assertEqual(previous_trial(evidence, owner, expected, receipt, 2)[1], tasks)
+            self.assertEqual(previous_trial(evidence, owner, expected, receipt, 2)[1],
+                             {**tasks, 'sha256': task_digest(tasks)})
             for wrong in (dict(report, status='failed'), dict(report, trials=[]),
                           dict(report, context={'GITHUB_RUN_ID': '999'})):
                 (evidence / 'benchmark.json').write_text(json.dumps(wrong))
                 with self.assertRaises(RuntimeError):
                     previous_trial(evidence, owner, expected, receipt, 2)
             (evidence / 'benchmark.json').write_text(json.dumps(report))
-            (evidence / 'tasks.json').write_text(json.dumps({'cxx': tasks, 'sha256': 'changed'}))
+            (evidence / 'tasks.json').write_text(json.dumps({**tasks, 'sha256': 'changed'}))
             with self.assertRaisesRegex(RuntimeError, 'task list changed'):
                 previous_trial(evidence, owner, expected, receipt, 2)
 
